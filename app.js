@@ -31,8 +31,24 @@
     frame.style.transform = `scale(${s})`;
   }
 
+  function scaleBrowser() {
+    const frame = document.querySelector('.browser-frame');
+    if (!frame) return;
+
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const pad = 40;
+
+    const scaleX = (vw - pad) / 1140;
+    const scaleY = (vh - pad) / 760;
+    const s = Math.min(scaleX, scaleY, 1);
+
+    frame.style.transform = `scale(${s})`;
+  }
+
   scaleIPad();
-  window.addEventListener('resize', scaleIPad);
+  scaleBrowser();
+  window.addEventListener('resize', () => { scaleIPad(); scaleBrowser(); });
 
   // --- Master timeline ---
   const master = gsap.timeline({ defaults: { ease: 'power3.out' } });
@@ -121,6 +137,81 @@
     yoyo: true,
     repeat: -1,
     delay: 2,
+  });
+
+  // ============================================================
+  // SQOOL Section — ScrollTrigger animations
+  // ============================================================
+  gsap.registerPlugin(ScrollTrigger);
+
+  // Browser frame entrance
+  gsap.to('.browser-container', {
+    opacity: 1,
+    duration: 0.01,
+    scrollTrigger: {
+      trigger: '#section-sqool',
+      start: 'top 80%',
+    },
+  });
+
+  gsap.fromTo('.browser-container',
+    { scale: 0.9, rotateX: 6, rotateY: -3, opacity: 0 },
+    {
+      scale: 1, rotateX: 0, rotateY: 0, opacity: 1,
+      duration: 1.2,
+      ease: 'power4.out',
+      scrollTrigger: {
+        trigger: '#section-sqool',
+        start: 'top 75%',
+      },
+    }
+  );
+
+  // SQOOL header
+  gsap.to('.sqool-header', {
+    opacity: 1,
+    y: 0,
+    duration: 0.6,
+    ease: 'power3.out',
+    scrollTrigger: {
+      trigger: '#section-sqool',
+      start: 'top 65%',
+    },
+  });
+
+  // SQOOL cards stagger
+  gsap.to('.sqool-card', {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    duration: 0.8,
+    stagger: 0.15,
+    ease: 'back.out(1.4)',
+    scrollTrigger: {
+      trigger: '.sqool-cards-grid',
+      start: 'top 80%',
+    },
+  });
+
+  // SQOOL card hover interactions
+  document.querySelectorAll('.sqool-card').forEach((card) => {
+    card.addEventListener('mouseenter', () => {
+      gsap.to(card, { y: -8, scale: 1.03, duration: 0.3, ease: 'power2.out' });
+    });
+    card.addEventListener('mouseleave', () => {
+      gsap.to(card, { y: 0, scale: 1, duration: 0.3, ease: 'power2.out' });
+    });
+  });
+
+  // Subtle idle float on browser
+  gsap.to('.browser-container', {
+    rotateX: 1,
+    rotateY: 0.8,
+    duration: 5,
+    ease: 'sine.inOut',
+    yoyo: true,
+    repeat: -1,
+    delay: 3,
   });
 
   // ============================================================

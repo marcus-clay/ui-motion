@@ -7,13 +7,21 @@
 
 body {
   background: #f7f7f7;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow-x: hidden;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+}
+
+/* ===== PAGE SECTIONS ===== */
+.section {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  overflow: hidden;
-  padding: 20px;
+  padding: 40px 20px;
+  position: relative;
 }
 
 /* ===== iPad MOCKUP ===== */
@@ -566,4 +574,343 @@ body {
   height: 100%;
   pointer-events: none;
   z-index: 10;
+}
+
+/* ============================================================
+   BROWSER MOCKUP — macOS Chrome
+   ============================================================ */
+.browser-container {
+  perspective: 1200px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transform-style: preserve-3d;
+}
+
+.browser-frame {
+  width: 1100px;
+  height: 720px;
+  background: #1c1c1e;
+  border-radius: 12px;
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.35),
+    0 10px 30px rgba(0, 0, 0, 0.2);
+  position: relative;
+  transform-origin: center center;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* --- Title bar --- */
+.browser-titlebar {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: #e8e8ea;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.browser-dots {
+  display: flex;
+  gap: 7px;
+  flex-shrink: 0;
+}
+
+.browser-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.browser-dot.red { background: #ff5f57; }
+.browser-dot.yellow { background: #febc2e; }
+.browser-dot.green { background: #28c840; }
+
+.browser-tabs {
+  display: flex;
+  margin-left: 12px;
+  gap: 2px;
+}
+
+.browser-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  background: #fff;
+  border-radius: 8px 8px 0 0;
+  font-size: 12px;
+  color: #333;
+  font-weight: 500;
+}
+
+.browser-tab-icon {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: linear-gradient(135deg, #3b82f6, #1e40af);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.browser-tab-icon svg {
+  width: 9px;
+  height: 9px;
+}
+
+.browser-tab-close {
+  font-size: 14px;
+  color: #999;
+  margin-left: 8px;
+  cursor: pointer;
+}
+
+/* --- URL bar --- */
+.browser-urlbar {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  background: #f5f5f7;
+  gap: 10px;
+  flex-shrink: 0;
+  border-bottom: 1px solid #ddd;
+}
+
+.browser-nav-btns {
+  display: flex;
+  gap: 6px;
+}
+
+.browser-nav-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+}
+
+.browser-nav-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.browser-url-input {
+  flex: 1;
+  padding: 6px 14px;
+  background: #e8e8ea;
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: #555;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.browser-url-lock svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* --- Browser screen --- */
+.browser-screen {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ============================================================
+   SQOOL UI
+   ============================================================ */
+.sqool {
+  width: 100%;
+  height: 100%;
+  background: #1a2035;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- SQOOL Header --- */
+.sqool-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 32px;
+  flex-shrink: 0;
+  opacity: 0;
+  transform: translateY(-15px);
+}
+
+.sqool-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sqool-logo-icon {
+  width: 36px;
+  height: 36px;
+}
+
+.sqool-logo-text {
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 1px;
+}
+
+.sqool-btn-login {
+  padding: 10px 24px;
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.sqool-btn-login:hover {
+  background: #2563eb;
+}
+
+/* --- SQOOL Cards --- */
+.sqool-cards-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 32px 40px;
+}
+
+.sqool-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  width: 100%;
+  max-width: 960px;
+}
+
+.sqool-card {
+  border-radius: 16px;
+  overflow: hidden;
+  background: #232a42;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transform: translateY(40px) scale(0.95);
+  cursor: pointer;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.sqool-card:hover {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.sqool-card-top {
+  padding: 28px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+  overflow: hidden;
+}
+
+.sqool-card-top::before {
+  content: '';
+  position: absolute;
+  top: -30%;
+  right: -30%;
+  width: 80%;
+  height: 80%;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 50%;
+}
+
+.sqool-card-top.orange {
+  background: linear-gradient(145deg, #f97316, #ea580c);
+}
+
+.sqool-card-top.purple {
+  background: linear-gradient(145deg, #8b5cf6, #7c3aed);
+}
+
+.sqool-card-top.blue {
+  background: linear-gradient(145deg, #3b82f6, #2563eb);
+}
+
+.sqool-card-top.navy {
+  background: linear-gradient(145deg, #1e40af, #1e3a8a);
+}
+
+.sqool-card-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.sqool-card-icon svg {
+  width: 36px;
+  height: 36px;
+}
+
+.sqool-card-top-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.sqool-card-body {
+  padding: 20px;
+}
+
+.sqool-card-body-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin-bottom: 8px;
+}
+
+.sqool-card-body-desc {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.sqool-card-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #60a5fa;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.sqool-card-link:hover {
+  color: #93c5fd;
+}
+
+.sqool-card-link svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ===== GSAP initial state for SQOOL ===== */
+.browser-container {
+  opacity: 0;
 }
