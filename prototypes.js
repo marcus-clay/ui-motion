@@ -88,6 +88,20 @@
       c.classList.remove('border-blue', 'border-green', 'border-red', 'locked');
       c.querySelectorAll('.sc-st-badge').forEach(b => b.remove());
       gsap.set(c, { opacity: 1, y: 0, scale: 1 });
+      // Reset screen-view card states
+      const screenContent = c.querySelector('.sc-screen-content');
+      const screenOff = c.querySelector('.sc-screen-off');
+      if (screenContent) gsap.set(screenContent, { opacity: 1, scale: 1 });
+      if (screenOff) gsap.set(screenOff, { opacity: 0 });
+      // Reset status pills
+      const status = c.querySelector('.sc-card-status');
+      if (status) {
+        status.classList.remove('locked-status');
+        // Restore original class
+        if (status.textContent !== 'Verrouillé') return;
+        status.textContent = status.dataset.originalText || 'Actif';
+        status.className = 'sc-card-status ' + (status.dataset.originalClass || 'active-status');
+      }
     });
     // Reset popups
     screens.active.querySelectorAll('.sc-popup').forEach(p => gsap.set(p, { opacity: 0, y: 10, scale: 0.9 }));
@@ -99,6 +113,9 @@
     document.getElementById('p-send-overlay')?.classList.add('hidden');
     document.getElementById('p-lock-overlay')?.classList.add('hidden');
     document.getElementById('p-send-check')?.classList.add('hidden');
+    // Hide grid initially (for screen reveal)
+    const grid = document.getElementById('p-grid-active');
+    if (grid) { grid.classList.remove('screens-visible'); gsap.set(grid, { opacity: 1 }); }
     // Reset tabs
     screens.active.querySelectorAll('.sc-tool-tab').forEach((t, i) => {
       t.classList.remove('active-tab');
@@ -185,7 +202,7 @@
     tl.add(() => {}, '+=1');
   }
 
-  // --- T2: Activer les interactions ---
+  // --- T2: Activer les interactions + Afficher les écrans ---
   function playT2() {
     resetAll();
     showScreen('pre');
@@ -198,7 +215,7 @@
     const tl = gsap.timeline({ delay: 0.5 });
     currentTL = tl;
 
-    // Cursor clicks toggle
+    // 1) Cursor clicks toggle
     const toggle = document.getElementById('p-toggle');
     tl.add(() => moveCursor(toggle, null));
     tl.add(() => {
@@ -206,7 +223,7 @@
       toggle.classList.add('on');
     }, '+=0.2');
 
-    // Transition to active screen
+    // 2) Transition to active screen
     tl.add(() => {}, '+=0.5');
     tl.add(() => showScreen('active'));
     tl.add(() => {}, '+=0.3');
@@ -215,28 +232,68 @@
     gsap.set('#p-sidebar', { opacity: 0, x: 30 });
     tl.to('#p-sidebar', { opacity: 1, x: 0, duration: 0.5, ease: springS });
 
-    // Cards get colored borders progressively
-    const activeCards = screens.active.querySelectorAll('.sc-student-card');
+    // 3) Screen thumbnails appear — cards stagger in with their screen previews
+    const activeCards = screens.active.querySelectorAll('.sc-screen-card');
+    // Initially hide screen content, show only cards
+    activeCards.forEach(c => {
+      const content = c.querySelector('.sc-screen-content');
+      if (content) gsap.set(content, { opacity: 0, scale: 0.9 });
+      gsap.set(c, { opacity: 0, y: 12, scale: 0.95 });
+    });
+
+    // Cards appear
+    tl.add(() => {
+      activeCards.forEach((c, i) => {
+        gsap.to(c, { opacity: 1, y: 0, scale: 1, duration: 0.35, delay: i * 0.04, ease: springS });
+      });
+    }, '+=0.2');
+    tl.add(() => {}, '+=0.6');
+
+    // 4) Cursor clicks "Afficher les écrans" sidebar button
+    const screensBtn = screens.active.querySelector('[data-action="screens"]');
+    tl.add(() => moveCursor(screensBtn, null));
+
+    // Button activates
+    tl.add(() => {
+      screensBtn.classList.add('active-btn');
+      gsap.fromTo(screensBtn, { scale: 1 }, { scale: 1.12, duration: 0.15, yoyo: true, repeat: 1, ease: springS });
+    }, '+=0.15');
+
+    // 5) Screen content REVEALS on each card — staggered wave
+    tl.add(() => {
+      activeCards.forEach((c, i) => {
+        const content = c.querySelector('.sc-screen-content');
+        if (content) {
+          gsap.to(content, {
+            opacity: 1, scale: 1,
+            duration: 0.4,
+            delay: i * 0.05,
+            ease: spring,
+          });
+        }
+        // Slight card pop
+        gsap.fromTo(c, { scale: 1 }, { scale: 1.03, duration: 0.2, delay: i * 0.05, yoyo: true, repeat: 1, ease: springS });
+      });
+    }, '+=0.3');
+
+    // 6) Add interaction borders on some cards
+    tl.add(() => {}, '+=0.8');
     const interactions = [
-      { idx: 0, cls: 'border-blue', emoji: '📝' },
-      { idx: 3, cls: 'border-green', emoji: '✓' },
-      { idx: 4, cls: 'border-red', emoji: '!' },
-      { idx: 7, cls: 'border-green', emoji: '✓' },
-      { idx: 8, cls: 'border-blue', emoji: '📝' },
-      { idx: 9, cls: 'border-red', emoji: '!' },
+      { idx: 3, cls: 'border-green' },  // Chloé — Terminé
+      { idx: 7, cls: 'border-green' },  // Inès R — Terminé
+      { idx: 4, cls: 'border-red' },    // Emma — Alerte
+      { idx: 9, cls: 'border-red' },    // Ravi — Alerte
+      { idx: 0, cls: 'border-blue' },   // Malik — Active
+      { idx: 8, cls: 'border-blue' },   // Salomé — Active
     ];
     interactions.forEach((item, i) => {
       tl.add(() => {
         const card = activeCards[item.idx];
+        if (!card) return;
         card.classList.add(item.cls);
-        const badge = document.createElement('div');
-        badge.className = 'sc-st-badge ' + (item.cls === 'border-blue' ? 'blue-badge' : item.cls === 'border-green' ? 'green-badge' : 'red-badge');
-        badge.textContent = item.emoji;
-        card.appendChild(badge);
-        gsap.fromTo(badge, { scale: 0 }, { scale: 1, duration: 0.3, ease: spring });
         gsap.fromTo(card, { scale: 1 }, { scale: 1.05, duration: 0.15, yoyo: true, repeat: 1, ease: springS });
-      }, '-=0.1');
-      tl.add(() => {}, '+=0.25');
+      }, i > 0 ? '-=0.05' : '+=0.1');
+      tl.add(() => {}, '+=0.2');
     });
 
     tl.add(() => {}, '+=1');
@@ -292,53 +349,145 @@
     tl.add(() => {}, '+=1.5');
   }
 
-  // --- T4: Verrouiller les écrans ---
+  // --- T4: Verrouiller les écrans (with screen-view) ---
   function playT4() {
     resetAll();
     showScreen('active', true);
     resetActiveScreen();
 
-    const activeCards = screens.active.querySelectorAll('.sc-student-card');
-    [0,3,8].forEach(i => activeCards[i]?.classList.add('border-blue'));
+    const activeCards = screens.active.querySelectorAll('.sc-screen-card');
+    const lockBtn = document.getElementById('p-btn-lock');
+    const screensBtn = screens.active.querySelector('[data-action="screens"]');
+
+    // Pre-set: screens visible, some borders
+    activeCards.forEach(c => {
+      const content = c.querySelector('.sc-screen-content');
+      if (content) gsap.set(content, { opacity: 1, scale: 1 });
+    });
+    [3,7].forEach(i => activeCards[i]?.classList.add('border-green'));
+    [4,9].forEach(i => activeCards[i]?.classList.add('border-red'));
+    [0,8].forEach(i => activeCards[i]?.classList.add('border-blue'));
+    if (screensBtn) screensBtn.classList.add('active-btn');
 
     const tl = gsap.timeline({ delay: 0.5 });
     currentTL = tl;
 
-    // Cursor clicks lock button
-    const lockBtn = document.getElementById('p-btn-lock');
+    // 1) We see the live screen grid — everything active, content visible
+    tl.add(() => {}, '+=0.8');
+
+    // 2) Cursor clicks lock button
     tl.add(() => moveCursor(lockBtn, null));
 
-    // Highlight button
+    // Lock button activates with red glow
     tl.add(() => {
       lockBtn.classList.add('active-btn');
       gsap.fromTo(lockBtn, { scale: 1 }, { scale: 1.15, duration: 0.15, yoyo: true, repeat: 1, ease: springS });
-    }, '+=0.2');
+    }, '+=0.15');
 
-    // Cards get locked state progressively
+    // 3) Screen thumbnails go dark one by one — wave from top-left
     tl.add(() => {
-      activeCards.forEach((c, i) => {
-        gsap.to(c, { opacity: 0.5, duration: 0.3, delay: i * 0.03, ease: smooth });
-        setTimeout(() => c.classList.add('locked'), i * 30 + 200);
+      activeCards.forEach((card, i) => {
+        const screenContent = card.querySelector('.sc-screen-content');
+        const screenOff = card.querySelector('.sc-screen-off');
+        const status = card.querySelector('.sc-card-status');
+
+        // Save original status
+        if (status) {
+          status.dataset.originalText = status.textContent;
+          status.dataset.originalClass = status.className.replace('sc-card-status ', '');
+        }
+
+        // Staggered lock: screen fades to black, lock icon appears
+        gsap.to(screenContent, {
+          opacity: 0, scale: 0.95,
+          duration: 0.3,
+          delay: i * 0.06,
+          ease: smooth,
+        });
+        gsap.to(screenOff, {
+          opacity: 1,
+          duration: 0.3,
+          delay: i * 0.06 + 0.15,
+          ease: smooth,
+        });
+
+        // Card border turns gray
+        setTimeout(() => {
+          card.classList.remove('border-blue', 'border-green', 'border-red');
+          card.classList.add('locked');
+          // Status pill changes to "Verrouillé"
+          if (status) {
+            status.textContent = 'Verrouillé';
+            status.className = 'sc-card-status';
+            status.style.background = '#fef2f2';
+            status.style.color = '#ef4444';
+          }
+        }, i * 60 + 200);
       });
     }, '+=0.3');
 
-    // Lock overlay appears
+    // 4) Lock feedback banner slides in from top
     const lockOverlay = document.getElementById('p-lock-overlay');
     tl.add(() => {
       lockOverlay.classList.remove('hidden');
       gsap.fromTo(lockOverlay, { opacity: 0 }, { opacity: 1, duration: 0.4, ease: smooth });
-      gsap.fromTo(lockOverlay.querySelector('.sc-lock-banner'), { scale: 0.9, y: 20 }, { scale: 1, y: 0, duration: 0.5, ease: spring });
-    }, '+=0.5');
+      gsap.fromTo(lockOverlay.querySelector('.sc-lock-banner'),
+        { scale: 0.85, y: -30 },
+        { scale: 1, y: 0, duration: 0.5, ease: spring }
+      );
+    }, '+=0.8');
 
-    // After a moment, unlock
-    tl.add(() => {}, '+=2');
+    // Hold — all screens locked, banner visible
+    tl.add(() => {}, '+=2.5');
+
+    // 5) Unlock — cursor clicks lock again
+    tl.add(() => moveCursor(lockBtn, null));
+
     tl.add(() => {
+      // Banner fades
       gsap.to(lockOverlay, { opacity: 0, duration: 0.3, onComplete: () => lockOverlay.classList.add('hidden') });
       lockBtn.classList.remove('active-btn');
-      activeCards.forEach(c => { c.classList.remove('locked'); gsap.to(c, { opacity: 1, duration: 0.3 }); });
-    });
 
-    tl.add(() => {}, '+=1');
+      // Screens come back to life — reverse wave
+      activeCards.forEach((card, i) => {
+        const screenContent = card.querySelector('.sc-screen-content');
+        const screenOff = card.querySelector('.sc-screen-off');
+        const status = card.querySelector('.sc-card-status');
+
+        gsap.to(screenOff, {
+          opacity: 0,
+          duration: 0.2,
+          delay: i * 0.04,
+          ease: smooth,
+        });
+        gsap.to(screenContent, {
+          opacity: 1, scale: 1,
+          duration: 0.4,
+          delay: i * 0.04 + 0.1,
+          ease: springS,
+        });
+
+        setTimeout(() => {
+          card.classList.remove('locked');
+          // Restore original status
+          if (status && status.dataset.originalText) {
+            status.textContent = status.dataset.originalText;
+            status.className = 'sc-card-status ' + (status.dataset.originalClass || 'active-status');
+            status.style.background = '';
+            status.style.color = '';
+          }
+        }, i * 40 + 150);
+      });
+
+      // Restore borders
+      setTimeout(() => {
+        [3,7].forEach(i => activeCards[i]?.classList.add('border-green'));
+        [4,9].forEach(i => activeCards[i]?.classList.add('border-red'));
+        [0,8].forEach(i => activeCards[i]?.classList.add('border-blue'));
+      }, 600);
+    }, '+=0.2');
+
+    tl.add(() => {}, '+=1.5');
   }
 
   // --- T5: Envoyer une ressource ---

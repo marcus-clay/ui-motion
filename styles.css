@@ -1263,6 +1263,84 @@ body {
 .sc-toast { position: absolute; top: 80px; right: 24px; display: flex; align-items: center; gap: 10px; padding: 12px 20px; background: #fff; border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,.12); font-size: 13px; font-weight: 500; color: #1e293b; z-index: 30; }
 .sc-toast.hidden { display: none; }
 
+/* ============================================================
+   SCREEN-VIEW CARDS — Student cards with screen thumbnails
+   ============================================================ */
+
+/* Card in screen-view mode */
+.sc-screen-card { padding: 0 !important; overflow: hidden; display: flex; flex-direction: column; }
+
+/* Screen thumbnail area */
+.sc-card-screen { position: relative; width: 100%; aspect-ratio: 4/3; overflow: hidden; background: #1e293b; border-radius: 8px 8px 0 0; }
+.sc-screen-content { position: absolute; inset: 0; display: flex; flex-direction: column; transition: opacity .4s, transform .4s; }
+.sc-screen-off { position: absolute; inset: 0; background: #0f172a; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .4s; border-radius: 8px 8px 0 0; }
+.sc-screen-off svg { width: 24px; height: 24px; opacity: .5; }
+
+/* Locked state */
+.sc-screen-card.locked .sc-screen-content { opacity: 0; transform: scale(.95); }
+.sc-screen-card.locked .sc-screen-off { opacity: 1; }
+.sc-screen-card.locked .sc-card-status { background: #ef4444 !important; color: #fff !important; }
+
+/* Mini URL bar inside thumbnail */
+.sc-screen-urlbar { display: flex; align-items: center; gap: 4px; padding: 3px 6px; background: #f1f5f9; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; }
+.sc-screen-dot { width: 4px; height: 4px; border-radius: 50%; background: #94a3b8; }
+.sc-screen-url { font-size: 7px; color: #64748b; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Screen body */
+.sc-screen-body { flex: 1; padding: 5px 6px; display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
+.sc-screen-h { font-size: 8px; font-weight: 700; color: #1e293b; }
+.sc-screen-line { height: 3px; background: #e2e8f0; border-radius: 2px; width: 100%; }
+.sc-screen-line.short { width: 60%; }
+.sc-screen-img-placeholder { width: 100%; height: 20px; background: linear-gradient(135deg, #fde68a, #fbbf24); border-radius: 3px; }
+
+/* Content theme variants */
+.wiki-thumb .sc-screen-body { background: #fff; }
+.pdf-thumb .sc-screen-body { background: #fff9f0; }
+.doc-thumb .sc-screen-body { background: #f0f7ff; }
+.pearl-thumb .sc-screen-body { background: #f5f0ff; }
+.app-thumb .sc-screen-body { background: #f0fdf4; }
+
+/* Pearltrees circles */
+.sc-screen-circles { display: flex; gap: 4px; align-items: center; margin-top: 2px; }
+.sc-screen-circles span { width: 12px; height: 12px; border-radius: 50%; }
+.sc-screen-circles span:nth-child(1) { background: #a78bfa; }
+.sc-screen-circles span:nth-child(2) { background: #60a5fa; }
+.sc-screen-circles span:nth-child(3) { background: #34d399; }
+
+/* GeoGebra graph */
+.sc-screen-graph { width: 100%; }
+.sc-screen-graph svg { width: 100%; height: auto; }
+
+/* Scratch blocks */
+.sc-screen-blocks { display: flex; flex-direction: column; gap: 2px; }
+.sc-block { height: 6px; border-radius: 2px; width: 80%; }
+.sc-block.blue { background: #3b82f6; width: 70%; }
+.sc-block.purple { background: #8b5cf6; width: 85%; }
+.sc-block.orange { background: #f97316; width: 55%; }
+
+/* Card footer */
+.sc-card-footer { display: flex; align-items: center; gap: 6px; padding: 6px 8px; background: #fff; border-top: 1px solid #e2e8f0; }
+.sc-card-app-icon { font-size: 12px; flex-shrink: 0; }
+.sc-card-name { font-size: 10px; font-weight: 600; color: #1e293b; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-card-status { font-size: 8px; font-weight: 700; padding: 2px 6px; border-radius: 8px; white-space: nowrap; }
+.active-status { background: #dbeafe; color: #2563eb; }
+.done-status { background: #dcfce7; color: #16a34a; }
+.alert-status { background: #fef2f2; color: #ef4444; }
+
+/* Screen-view grid: slightly larger cards for thumbnails */
+.screen-view-grid { grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.screen-view-grid .sc-student-card { border-width: 1.5px; }
+
+/* Lock overlay feedback (on top of grid) */
+.sc-lock-overlay .sc-lock-banner { animation: lockPulse 2s ease infinite; }
+@keyframes lockPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,.3); }
+  50% { box-shadow: 0 0 0 12px rgba(239,68,68,0); }
+}
+
+/* Sidebar "Écrans" button active state with screen icon glow */
+.sc-side-btn[data-action="screens"].active-btn svg { stroke: #fff; }
+
 /* --- Responsive --- */
 @media (max-width: 900px) {
   .proto-toc { width: 160px; }
