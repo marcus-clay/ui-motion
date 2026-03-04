@@ -144,6 +144,59 @@
     // Reset progress
     const fill = document.getElementById('p-session-fill');
     if (fill) fill.style.width = '0%';
+    // Reset resource side panel
+    const resPanel = document.getElementById('p-res-panel');
+    if (resPanel) { resPanel.classList.add('hidden'); resPanel.classList.remove('visible'); gsap.set(resPanel, { x: '100%' }); }
+    const panels = document.getElementById('p-student-panels');
+    if (panels) panels.classList.remove('panel-open');
+    // Hide all previews, show PDF by default
+    screens.student.querySelectorAll('.sc-res-preview').forEach(p => p.classList.add('hidden'));
+    const pdfPreview = document.getElementById('p-res-preview-pdf');
+    if (pdfPreview) pdfPreview.classList.remove('hidden');
+  }
+
+  // --- Resource panel helpers ---
+  const resConfig = {
+    pdf:   { title: 'Cours_Egypte.pdf',          badge: 'PDF',  badgeClass: '',           previewId: 'p-res-preview-pdf' },
+    doc:   { title: 'Exercices.docx',             badge: 'DOC',  badgeClass: 'doc-badge',  previewId: 'p-res-preview-doc' },
+    wiki:  { title: 'Wikipedia – Osiris',         badge: 'WEB',  badgeClass: 'link-badge', previewId: 'p-res-preview-wiki' },
+    pearl: { title: 'Pearltrees – Égypte antique', badge: 'WEB', badgeClass: 'link-badge', previewId: 'p-res-preview-pearl' },
+  };
+
+  function openResPanel(resKey) {
+    const config = resConfig[resKey];
+    if (!config) return;
+
+    const panel = document.getElementById('p-res-panel');
+    const title = document.getElementById('p-res-panel-title');
+    const badge = document.getElementById('p-res-panel-badge');
+    const panels = document.getElementById('p-student-panels');
+
+    // Set content
+    title.textContent = config.title;
+    badge.textContent = config.badge;
+    badge.className = 'sc-res-panel-badge ' + config.badgeClass;
+
+    // Show correct preview
+    screens.student.querySelectorAll('.sc-res-preview').forEach(p => p.classList.add('hidden'));
+    document.getElementById(config.previewId)?.classList.remove('hidden');
+
+    // Slide panel in
+    panel.classList.remove('hidden');
+    gsap.fromTo(panel, { x: '100%' }, { x: '0%', duration: 0.45, ease: springS, onStart: () => panel.classList.add('visible') });
+
+    // Shrink panels grid
+    if (panels) panels.classList.add('panel-open');
+  }
+
+  function closeResPanel() {
+    const panel = document.getElementById('p-res-panel');
+    const panels = document.getElementById('p-student-panels');
+    gsap.to(panel, { x: '100%', duration: 0.3, ease: smooth, onComplete: () => {
+      panel.classList.remove('visible');
+      panel.classList.add('hidden');
+    }});
+    if (panels) panels.classList.remove('panel-open');
   }
 
   function resetAll() {
@@ -591,7 +644,7 @@
     tl.add(() => {}, '+=1');
   }
 
-  // --- S2: Consulter les ressources ---
+  // --- S2: Consulter les ressources (with side panel) ---
   function playS2() {
     resetAll();
     showScreen('student', true);
@@ -601,7 +654,7 @@
     const tl = gsap.timeline({ delay: 0.5 });
     currentTL = tl;
 
-    // Cursor clicks on PDF resource
+    // ===== 1) Click PDF resource → panel slides open =====
     const pdfRes = screens.student.querySelector('[data-res="pdf"]');
     tl.add(() => moveCursor(pdfRes, null));
     tl.add(() => {
@@ -609,30 +662,64 @@
       gsap.fromTo(pdfRes, { scale: 1 }, { scale: 1.03, duration: 0.2, yoyo: true, repeat: 1, ease: springS });
     }, '+=0.1');
 
-    // Browse — simulate reading
-    tl.to('#p-session-fill', { width: '45%', duration: 1.5, ease: smooth }, '+=0.5');
-    tl.add(() => pdfRes.classList.remove('highlight'), '+=0.3');
+    // Open PDF in side panel
+    tl.add(() => openResPanel('pdf'), '+=0.25');
 
-    // Cursor clicks link
+    // Simulate reading — scroll panel body down slowly
+    tl.to('#p-session-fill', { width: '42%', duration: 2, ease: smooth }, '+=0.3');
+    tl.add(() => {
+      const body = document.getElementById('p-res-panel-body');
+      if (body) gsap.to(body, { scrollTop: 200, duration: 1.5, ease: smooth });
+    }, '-=1.5');
+
+    // Close panel
+    tl.add(() => {
+      pdfRes.classList.remove('highlight');
+      closeResPanel();
+    }, '+=0.5');
+    tl.add(() => {}, '+=0.5');
+
+    // ===== 2) Click Wikipedia → panel opens with wiki content =====
     const wikiRes = screens.student.querySelector('[data-res="wiki"]');
-    tl.add(() => moveCursor(wikiRes, null), '+=0.3');
+    tl.add(() => moveCursor(wikiRes, null));
     tl.add(() => {
       wikiRes.classList.add('highlight');
       gsap.fromTo(wikiRes, { scale: 1 }, { scale: 1.03, duration: 0.2, yoyo: true, repeat: 1, ease: springS });
     }, '+=0.1');
 
-    tl.to('#p-session-fill', { width: '55%', duration: 1, ease: smooth }, '+=0.5');
-    tl.add(() => wikiRes.classList.remove('highlight'));
+    tl.add(() => openResPanel('wiki'), '+=0.25');
 
-    // Click Pearltrees
+    // Read Wikipedia
+    tl.to('#p-session-fill', { width: '52%', duration: 1.8, ease: smooth }, '+=0.3');
+    tl.add(() => {
+      const body = document.getElementById('p-res-panel-body');
+      if (body) gsap.to(body, { scrollTop: 150, duration: 1.2, ease: smooth });
+    }, '-=1.2');
+
+    // Close
+    tl.add(() => {
+      wikiRes.classList.remove('highlight');
+      closeResPanel();
+    }, '+=0.5');
+    tl.add(() => {}, '+=0.4');
+
+    // ===== 3) Click Pearltrees → panel opens with collection =====
     const pearlRes = screens.student.querySelector('[data-res="pearl"]');
-    tl.add(() => moveCursor(pearlRes, null), '+=0.3');
+    tl.add(() => moveCursor(pearlRes, null));
     tl.add(() => {
       pearlRes.classList.add('highlight');
+      gsap.fromTo(pearlRes, { scale: 1 }, { scale: 1.03, duration: 0.2, yoyo: true, repeat: 1, ease: springS });
     }, '+=0.1');
 
-    tl.to('#p-session-fill', { width: '65%', duration: 1, ease: smooth }, '+=0.5');
-    tl.add(() => pearlRes.classList.remove('highlight'));
+    tl.add(() => openResPanel('pearl'), '+=0.25');
+
+    tl.to('#p-session-fill', { width: '62%', duration: 1.5, ease: smooth }, '+=0.3');
+
+    // Close
+    tl.add(() => {
+      pearlRes.classList.remove('highlight');
+      closeResPanel();
+    }, '+=0.8');
 
     tl.add(() => {}, '+=1');
   }
