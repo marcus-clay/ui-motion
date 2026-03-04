@@ -247,14 +247,8 @@
     });
   }
 
-  // ============================================================
-  // Section 3 — SQOOL Classe 5-Click Animated Flow
-  // Screens: Teacher pre-session → Active session → Student view
-  // iPadOS HIG: spring physics, progressive disclosure, zooms
-  // ============================================================
-  (function initFlow() {
-    const section = document.getElementById('section-flow');
-    if (!section) return;
+  // Section 3 flow moved to prototypes.js
+  if (false) { // OLD CODE — disabled
 
     const progressFill = section.querySelector('.flow-progress-fill');
     const dots = section.querySelectorAll('.flow-step-dot');
@@ -608,7 +602,7 @@
           break;
       }
     }
-  })();
+  } // END OLD FLOW CODE
 
   // ============================================================
   // WebGL Particle Background — Floating light particles
