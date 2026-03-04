@@ -145,7 +145,17 @@
     document.getElementById('p-project-overlay')?.classList.add('hidden');
     document.getElementById('p-push-overlay')?.classList.add('hidden');
     document.getElementById('p-group-overlay')?.classList.add('hidden');
+    document.getElementById('p-poll-overlay')?.classList.add('hidden');
+    document.getElementById('p-reply-overlay')?.classList.add('hidden');
     document.getElementById('p-send-check')?.classList.add('hidden');
+
+    // Reset poll state
+    const pollLaunch = document.getElementById('p-poll-launch');
+    if (pollLaunch) { pollLaunch.textContent = 'Envoyer le sondage'; pollLaunch.style.background = ''; }
+    document.querySelectorAll('.sc-poll-fill').forEach(f => f.style.width = '0%');
+    document.querySelectorAll('.sc-poll-pct').forEach(p => p.textContent = '0%');
+    const pollStatus = document.getElementById('p-poll-status');
+    if (pollStatus) pollStatus.innerHTML = '<span class="sc-dot green"></span> 0/23 réponses';
 
     // Reset action bar buttons
     screens.active.querySelectorAll('.sc-action-btn').forEach(b => b.classList.remove('active-btn'));
@@ -1065,19 +1075,1059 @@
     tl.add(() => {}, '+=1.2');
   }
 
+  // --- S6: Recevoir une ressource (notification toast) ---
+  function playS6() {
+    resetAll();
+    showScreen('student', true);
+    resetStudentScreen();
+    gsap.set('#p-session-fill', { width: '45%' });
+
+    const tl = gsap.timeline({ delay: 0.5 });
+    currentTL = tl;
+
+    // Student is working — progress advances
+    tl.to('#p-session-fill', { width: '50%', duration: 1.5, ease: smooth });
+
+    // Toast notification slides in
+    const toast = document.getElementById('p-toast');
+    tl.add(() => {
+      toast.classList.remove('hidden');
+      gsap.fromTo(toast,
+        { y: -30, opacity: 0, scale: 0.95 },
+        { y: 0, opacity: 1, scale: 1, duration: 0.4, ease: iosSpring }
+      );
+    }, '+=0.3');
+
+    // Hold — notification visible
+    tl.add(() => {}, '+=1.5');
+
+    // New resource appears in resource list with highlight
+    const resources = screens.student.querySelectorAll('.sc-resource');
+    const lastRes = resources[resources.length - 1];
+    tl.add(() => {
+      if (lastRes) {
+        lastRes.classList.add('highlight');
+        gsap.fromTo(lastRes,
+          { boxShadow: '0 0 0 0 rgba(0,122,255,0)' },
+          { boxShadow: '0 0 0 2px rgba(0,122,255,.25)', duration: 0.3, yoyo: true, repeat: 2, ease: smooth }
+        );
+      }
+    }, '+=0.3');
+
+    // Toast fades
+    tl.add(() => {
+      gsap.to(toast, { y: -20, opacity: 0, duration: 0.3, ease: smooth, onComplete: () => toast.classList.add('hidden') });
+    }, '+=1.5');
+
+    tl.add(() => { lastRes?.classList.remove('highlight'); }, '+=0.5');
+    tl.add(() => {}, '+=0.5');
+  }
+
+  // --- S7: Écran verrouillé par l'enseignant ---
+  function playS7() {
+    resetAll();
+    showScreen('student', true);
+    resetStudentScreen();
+    gsap.set('#p-session-fill', { width: '55%' });
+
+    const tl = gsap.timeline({ delay: 0.5 });
+    currentTL = tl;
+
+    // Student is working
+    tl.to('#p-session-fill', { width: '58%', duration: 1, ease: smooth });
+
+    // Lock screen appears
+    const lock = document.getElementById('p-student-lock');
+    tl.add(() => {
+      lock.classList.remove('hidden');
+      gsap.fromTo(lock,
+        { opacity: 0 },
+        { opacity: 1, duration: 0.4, ease: smooth }
+      );
+    }, '+=0.5');
+
+    // Hold — locked state
+    tl.add(() => {}, '+=3');
+
+    // Unlock
+    tl.add(() => {
+      gsap.to(lock, { opacity: 0, duration: 0.4, ease: smooth, onComplete: () => lock.classList.add('hidden') });
+    });
+
+    // Toast: "L'enseignant a déverrouillé votre écran"
+    const toast = document.getElementById('p-toast');
+    tl.add(() => {
+      toast.querySelector('span:nth-child(2)').textContent = 'Votre écran a été déverrouillé';
+      toast.querySelector('.sc-res-icon')?.remove();
+      toast.classList.remove('hidden');
+      gsap.fromTo(toast, { y: -30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: iosSpring });
+    }, '+=0.3');
+
+    tl.add(() => {
+      gsap.to(toast, { y: -20, opacity: 0, duration: 0.3, ease: smooth, onComplete: () => toast.classList.add('hidden') });
+    }, '+=2');
+
+    tl.add(() => {}, '+=0.5');
+  }
+
+  // ============================================================
+  // NEW TEACHER PROTOTYPES
+  // ============================================================
+
+  // --- T10: Lancer un sondage ---
+  function playT10() {
+    resetAll();
+    setupActiveScreen();
+
+    const overlay = document.getElementById('p-poll-overlay');
+    const tl = gsap.timeline({ delay: 0.5 });
+    currentTL = tl;
+
+    // Show poll overlay
+    tl.add(() => {
+      overlay.classList.remove('hidden');
+      gsap.fromTo(overlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
+      gsap.fromTo(overlay.querySelector('.sc-poll-modal'),
+        { scale: 0.95, y: 20 },
+        { scale: 1, y: 0, duration: 0.35, ease: iosSpring }
+      );
+    }, '+=0.3');
+
+    // Cursor clicks "Envoyer le sondage"
+    const launchBtn = document.getElementById('p-poll-launch');
+    tl.add(() => moveCursor(launchBtn, null), '+=0.6');
+    tl.add(() => {
+      gsap.to(launchBtn, { scale: 0.96, duration: 0.06, yoyo: true, repeat: 1 });
+      launchBtn.textContent = 'Sondage envoyé';
+      launchBtn.style.background = '#34c759';
+    }, '+=0.1');
+
+    // Responses come in — bars fill up
+    const options = overlay.querySelectorAll('.sc-poll-option');
+    const statusEl = document.getElementById('p-poll-status');
+
+    // Wave 1: 8 responses
+    tl.add(() => {
+      statusEl.innerHTML = '<span class="sc-dot green"></span> 8/23 réponses';
+      const fills = overlay.querySelectorAll('.sc-poll-fill');
+      const pcts = overlay.querySelectorAll('.sc-poll-pct');
+      gsap.to(fills[0], { width: '50%', duration: 0.6, ease: smooth }); pcts[0].textContent = '50%';
+      gsap.to(fills[1], { width: '30%', duration: 0.6, ease: smooth }); pcts[1].textContent = '25%';
+      gsap.to(fills[2], { width: '20%', duration: 0.6, ease: smooth }); pcts[2].textContent = '25%';
+    }, '+=0.8');
+
+    // Wave 2: 18 responses
+    tl.add(() => {
+      statusEl.innerHTML = '<span class="sc-dot green"></span> 18/23 réponses';
+      const fills = overlay.querySelectorAll('.sc-poll-fill');
+      const pcts = overlay.querySelectorAll('.sc-poll-pct');
+      gsap.to(fills[0], { width: '65%', duration: 0.6, ease: smooth }); pcts[0].textContent = '56%';
+      gsap.to(fills[1], { width: '45%', duration: 0.6, ease: smooth }); pcts[1].textContent = '28%';
+      gsap.to(fills[2], { width: '25%', duration: 0.6, ease: smooth }); pcts[2].textContent = '16%';
+    }, '+=1');
+
+    // Wave 3: 23 responses
+    tl.add(() => {
+      statusEl.innerHTML = '<span class="sc-dot green"></span> 23/23 réponses';
+      const fills = overlay.querySelectorAll('.sc-poll-fill');
+      const pcts = overlay.querySelectorAll('.sc-poll-pct');
+      gsap.to(fills[0], { width: '70%', duration: 0.6, ease: smooth }); pcts[0].textContent = '52%';
+      gsap.to(fills[1], { width: '50%', duration: 0.6, ease: smooth }); pcts[1].textContent = '30%';
+      gsap.to(fills[2], { width: '30%', duration: 0.6, ease: smooth }); pcts[2].textContent = '18%';
+    }, '+=0.8');
+
+    tl.add(() => {}, '+=2');
+
+    // Close
+    const closeBtn = document.getElementById('p-poll-close');
+    tl.add(() => moveCursor(closeBtn, null));
+    tl.add(() => {
+      gsap.to(overlay, { opacity: 0, duration: 0.25, ease: smooth, onComplete: () => {
+        overlay.classList.add('hidden');
+        // Reset poll state
+        launchBtn.textContent = 'Envoyer le sondage';
+        launchBtn.style.background = '';
+        overlay.querySelectorAll('.sc-poll-fill').forEach(f => f.style.width = '0%');
+        overlay.querySelectorAll('.sc-poll-pct').forEach(p => p.textContent = '0%');
+        statusEl.innerHTML = '<span class="sc-dot green"></span> 0/23 réponses';
+      }});
+    }, '+=0.15');
+
+    tl.add(() => {}, '+=0.5');
+  }
+
+  // --- T11: Répondre à un élève ---
+  function playT11() {
+    resetAll();
+    setupActiveScreen();
+
+    const mgmtGrid = document.getElementById('p-grid-mgmt');
+    const panel = document.getElementById('p-messages-panel');
+    const mgmtCards = screens.active.querySelectorAll('.sc-mgmt-card');
+
+    // Show badge on Ravi's card
+    const raviCard = mgmtCards[9]; // Ravi Singh
+    if (raviCard) {
+      const badge = raviCard.querySelector('.sc-interaction-badge');
+      if (badge) {
+        badge.className = 'sc-interaction-badge badge-question';
+        badge.innerHTML = '<i class="ph-fill ph-question" style="font-size:11px"></i>';
+        raviCard.classList.add('badge-active');
+      }
+    }
+
+    const tl = gsap.timeline({ delay: 0.5 });
+    currentTL = tl;
+
+    // Cursor clicks Ravi's card
+    tl.add(() => moveCursor(raviCard, null));
+
+    // Show messages panel
+    tl.add(() => {
+      panel.classList.remove('hidden');
+      gsap.fromTo(panel, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: springS });
+      gsap.to(mgmtGrid, { opacity: 0.3, duration: 0.2 });
+    }, '+=0.2');
+
+    // Messages appear
+    const msgs = panel.querySelectorAll('.sc-msg-row');
+    msgs.forEach((m, i) => {
+      gsap.set(m, { opacity: 0, x: -20 });
+      tl.to(m, { opacity: 1, x: 0, duration: 0.35, ease: springS }, `-=${i > 0 ? 0.15 : 0}`);
+    });
+
+    tl.add(() => {}, '+=0.5');
+
+    // Cursor clicks on Ravi's message row
+    const raviMsg = document.getElementById('p-msg-ravi');
+    tl.add(() => moveCursor(raviMsg, null));
+
+    // Show reply overlay
+    const replyOverlay = document.getElementById('p-reply-overlay');
+    tl.add(() => {
+      replyOverlay.classList.remove('hidden');
+      gsap.fromTo(replyOverlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
+      gsap.fromTo(replyOverlay.querySelector('.sc-reply-modal'),
+        { scale: 0.95, y: 15 },
+        { scale: 1, y: 0, duration: 0.35, ease: iosSpring }
+      );
+    }, '+=0.2');
+
+    tl.add(() => {}, '+=0.8');
+
+    // Cursor clicks send reply
+    const replySend = document.getElementById('p-reply-send');
+    tl.add(() => moveCursor(replySend, null));
+    tl.add(() => {
+      gsap.to(replySend, { scale: 0.96, duration: 0.06, yoyo: true, repeat: 1 });
+    }, '+=0.08');
+
+    // Close reply overlay
+    tl.add(() => {
+      gsap.to(replyOverlay, { opacity: 0, duration: 0.25, ease: smooth, onComplete: () => replyOverlay.classList.add('hidden') });
+    }, '+=0.2');
+
+    // Badge on Ravi's card changes to "understood"
+    tl.add(() => {
+      if (raviCard) {
+        const badge = raviCard.querySelector('.sc-interaction-badge');
+        if (badge) {
+          badge.className = 'sc-interaction-badge badge-understood';
+          badge.innerHTML = '<i class="ph-fill ph-check-circle" style="font-size:11px"></i>';
+          gsap.fromTo(badge, { scale: 0.5 }, { scale: 1, duration: 0.25, ease: iosSpring });
+        }
+      }
+    }, '+=0.3');
+
+    // Close messages panel
+    tl.add(() => {
+      panel.classList.add('hidden');
+      gsap.to(mgmtGrid, { opacity: 1, duration: 0.3 });
+    }, '+=1');
+
+    tl.add(() => {}, '+=1');
+  }
+
+  // ============================================================
+  // SCENARIO NARRATION SYSTEM
+  // ============================================================
+
+  const narrationPanel = document.getElementById('sc-narration');
+
+  function showNarration(config) {
+    if (!narrationPanel) return;
+    narrationPanel.classList.remove('hidden');
+    gsap.fromTo(narrationPanel,
+      { opacity: 0, x: 20 },
+      { opacity: 1, x: 0, duration: 0.4, ease: iosSpring }
+    );
+
+    document.getElementById('sc-narration-label').textContent = config.label;
+    document.getElementById('sc-narration-title').textContent = config.title;
+    document.getElementById('sc-narration-situation').textContent = config.situation;
+
+    // Characters
+    const charsEl = document.getElementById('sc-narration-characters');
+    charsEl.innerHTML = config.characters.map(c =>
+      '<div class="sc-narration-char">' +
+        '<div class="sc-narration-char-avatar" style="background:' + c.color + '">' + c.initials + '</div>' +
+        '<div class="sc-narration-char-info">' +
+          '<span class="sc-narration-char-name">' + c.name + '</span>' +
+          '<span class="sc-narration-char-role">' + c.role + '</span>' +
+        '</div>' +
+      '</div>'
+    ).join('');
+
+    // Steps
+    const stepsEl = document.getElementById('sc-narration-steps');
+    stepsEl.innerHTML = config.steps.map((s, i) =>
+      '<div class="sc-narration-step" id="sc-step-' + i + '">' +
+        '<div class="sc-narration-step-num">' + (i + 1) + '</div>' +
+        '<div class="sc-narration-step-content">' +
+          '<span class="sc-narration-step-who ' + s.who + '">' + (s.who === 'teacher' ? 'Enseignant' : 'Élève') + '</span>' +
+          '<span class="sc-narration-step-action">' + s.action + '</span>' +
+          '<span class="sc-narration-step-detail">' + s.detail + '</span>' +
+        '</div>' +
+      '</div>'
+    ).join('');
+  }
+
+  function setNarrationStep(idx, uxText) {
+    if (!narrationPanel) return;
+    const steps = narrationPanel.querySelectorAll('.sc-narration-step');
+    steps.forEach((s, i) => {
+      s.classList.remove('active', 'done');
+      if (i < idx) s.classList.add('done');
+      if (i === idx) s.classList.add('active');
+    });
+
+    // Scroll step into view
+    const activeStep = document.getElementById('sc-step-' + idx);
+    if (activeStep) activeStep.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    // UX guideline
+    const uxPanel = document.getElementById('sc-narration-ux');
+    const uxTextEl = document.getElementById('sc-narration-ux-text');
+    if (uxText) {
+      uxPanel.classList.remove('hidden');
+      uxTextEl.textContent = uxText;
+      gsap.fromTo(uxPanel, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: smooth });
+    } else {
+      uxPanel.classList.add('hidden');
+    }
+  }
+
+  function hideNarration() {
+    if (!narrationPanel) return;
+    gsap.to(narrationPanel, { opacity: 0, x: 20, duration: 0.3, ease: smooth,
+      onComplete: () => narrationPanel.classList.add('hidden')
+    });
+  }
+
+  // ============================================================
+  // SCENARIO 1: Démarrer et distribuer les ressources
+  // ============================================================
+  function playSC1() {
+    resetAll();
+    hideNarration();
+
+    showNarration({
+      label: 'Scénario 1',
+      title: 'Démarrer et distribuer',
+      situation: 'M. David commence sa séance de physique avec la classe de 3S. Il doit ouvrir la classe, vérifier les connexions, activer le suivi en temps réel, et distribuer le cours du jour à tous les élèves.',
+      characters: [
+        { name: 'Thomas David', initials: 'TD', color: '#3b82f6', role: 'Enseignant de physique' },
+        { name: 'Chloé Dupont', initials: 'CD', color: '#ec4899', role: 'Élève, 3S' },
+        { name: 'Marius Berthelot', initials: 'MB', color: '#14b8a6', role: 'Élève, 3S — souvent en retard' },
+      ],
+      steps: [
+        { who: 'teacher', action: 'Ouvrir la classe', detail: 'M. David lance la séance. Les élèves se connectent un par un.' },
+        { who: 'teacher', action: 'Activer les interactions', detail: 'Il bascule le toggle pour voir les retours des élèves en temps réel.' },
+        { who: 'teacher', action: 'Distribuer le cours', detail: 'Il envoie le PDF du cours à toute la classe via le bouton Partager.' },
+        { who: 'student', action: 'Recevoir la notification', detail: 'Chloé reçoit un toast : nouveau document disponible.' },
+        { who: 'student', action: 'Consulter la ressource', detail: 'Chloé ouvre le PDF dans le panneau latéral et commence à lire.' },
+      ],
+    });
+
+    const tl = gsap.timeline({ delay: 0.8 });
+    currentTL = tl;
+
+    // --- Step 1: Open class ---
+    tl.add(() => setNarrationStep(0, 'Progressive disclosure : les élèves apparaissent un par un pour donner un sentiment de présence vivante. L\'animation staggered (décalée) crée un rythme naturel qui rassure l\'enseignant.'));
+    tl.add(() => showScreen('pre'));
+
+    const preCards = screens.pre.querySelectorAll('.sc-student-card');
+    const connCount = screens.pre.querySelector('.p-conn-count');
+    const disconnCount = screens.pre.querySelector('.p-disconn-count');
+    let connected = 0;
+    [0,4,1,7,3,5,9,2,6,8,10,11].forEach((idx, i) => {
+      tl.add(() => {
+        gsap.to(preCards[idx], { opacity: 1, scale: 1, y: 0, duration: 0.3, ease: smooth });
+        preCards[idx].classList.add('connected');
+        connected++;
+        connCount.textContent = connected;
+        disconnCount.textContent = 24 - connected;
+      }, i * 0.08 + 0.3);
+    });
+    tl.add(() => {
+      // Fast-connect remaining
+      for (let i = 12; i < 23; i++) {
+        gsap.to(preCards[i], { opacity: 1, scale: 1, y: 0, duration: 0.2, delay: (i - 12) * 0.03, ease: smooth });
+        preCards[i].classList.add('connected');
+      }
+      connCount.textContent = '23';
+      disconnCount.textContent = '1';
+    }, '+=0.3');
+
+    tl.add(() => {}, '+=1');
+
+    // --- Step 2: Activate interactions ---
+    tl.add(() => setNarrationStep(1, 'Toggle pattern iPadOS : un seul geste pour basculer d\'un état à l\'autre. Le changement d\'écran (pré-session → session active) crée une rupture visuelle claire qui signale le début de l\'activité pédagogique.'));
+    const toggle = document.getElementById('p-toggle');
+    tl.add(() => moveCursor(toggle, null));
+    tl.add(() => { toggle.classList.remove('off'); toggle.classList.add('on'); }, '+=0.2');
+    tl.add(() => showScreen('active'), '+=0.5');
+
+    // Management cards appear
+    const mgmtCards = screens.active.querySelectorAll('.sc-mgmt-card');
+    mgmtCards.forEach(c => gsap.set(c, { opacity: 0, y: 10, scale: 0.95 }));
+    tl.add(() => {
+      mgmtCards.forEach((c, i) => gsap.to(c, { opacity: 1, y: 0, scale: 1, duration: 0.3, delay: i * 0.025, ease: springS }));
+    }, '+=0.3');
+    tl.add(() => {}, '+=1');
+
+    // --- Step 3: Send resource ---
+    tl.add(() => setNarrationStep(2, 'Action contextuelle : le bouton « Partager un document » est toujours visible dans la barre d\'actions. Pas de menu caché — l\'enseignant sait immédiatement où trouver cette fonctionnalité. Le modal de confirmation évite les envois accidentels.'));
+    const shareDocBtn = document.getElementById('p-btn-share-doc');
+    tl.add(() => moveCursor(shareDocBtn, null));
+    tl.add(() => { shareDocBtn.classList.add('active-btn'); }, '+=0.15');
+
+    const sendOverlay = document.getElementById('p-send-overlay');
+    tl.add(() => {
+      sendOverlay.classList.remove('hidden');
+      gsap.fromTo(sendOverlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
+      gsap.fromTo(sendOverlay.querySelector('.sc-send-modal'), { scale: 0.95, y: 20 }, { scale: 1, y: 0, duration: 0.35, ease: smooth });
+    }, '+=0.2');
+
+    const confirmBtn = document.getElementById('p-send-confirm');
+    tl.add(() => moveCursor(confirmBtn, null), '+=0.5');
+    tl.add(() => {
+      const check = document.getElementById('p-send-check');
+      check.classList.remove('hidden');
+      gsap.fromTo(check, { scale: 0 }, { scale: 1, duration: 0.3, ease: smooth });
+    }, '+=0.15');
+    tl.add(() => {
+      gsap.to(sendOverlay, { opacity: 0, duration: 0.25, ease: smooth, onComplete: () => sendOverlay.classList.add('hidden') });
+      shareDocBtn.classList.remove('active-btn');
+    }, '+=0.5');
+
+    // Card feedback
+    tl.add(() => {
+      mgmtCards.forEach((card, i) => {
+        const badge = document.createElement('div');
+        badge.className = 'sc-card-received';
+        badge.innerHTML = '<i class="ph-fill ph-check-circle" style="font-size:14px;color:#34c759"></i>';
+        card.appendChild(badge);
+        gsap.fromTo(badge, { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.25, delay: i * 0.025, ease: smooth });
+        setTimeout(() => gsap.to(badge, { opacity: 0, duration: 0.3, onComplete: () => badge.remove() }), 1800 + i * 20);
+      });
+    }, '+=0.3');
+    tl.add(() => {}, '+=1.5');
+
+    // --- Step 4: Student receives notification ---
+    tl.add(() => setNarrationStep(3, 'Notification non-intrusive (toast) : la ressource apparaît sans interrompre le travail en cours. Le pattern iPadOS de notification « banner » informe sans bloquer, contrairement à un pop-up modal qui forcerait une action.'));
+    tl.add(() => showScreen('student'));
+    resetStudentScreen();
+    gsap.set('#p-session-fill', { width: '15%' });
+    tl.add(() => {}, '+=0.3');
+
+    const toast = document.getElementById('p-toast');
+    tl.add(() => {
+      toast.classList.remove('hidden');
+      gsap.fromTo(toast, { y: -30, opacity: 0, scale: 0.95 }, { y: 0, opacity: 1, scale: 1, duration: 0.4, ease: iosSpring });
+    }, '+=0.4');
+    tl.add(() => {}, '+=1.5');
+
+    // --- Step 5: Student opens resource ---
+    tl.add(() => setNarrationStep(4, 'Panneau latéral glissant : la ressource s\'ouvre en superposition sans quitter la vue principale. L\'élève garde le contexte de sa séance. Le geste de retour (chevron) est cohérent avec les conventions iOS/iPadOS de navigation.'));
+    const pdfRes = screens.student.querySelector('[data-res="pdf"]');
+    tl.add(() => moveCursor(pdfRes, null));
+    tl.add(() => { pdfRes.classList.add('highlight'); }, '+=0.1');
+    tl.add(() => openResPanel('pdf'), '+=0.25');
+
+    tl.to('#p-session-fill', { width: '30%', duration: 2, ease: smooth }, '+=0.3');
+    tl.add(() => {
+      gsap.to(toast, { y: -20, opacity: 0, duration: 0.3, ease: smooth, onComplete: () => toast.classList.add('hidden') });
+    }, '-=1.5');
+
+    tl.add(() => { pdfRes.classList.remove('highlight'); closeResPanel(); }, '+=1');
+    tl.add(() => {}, '+=1');
+  }
+
+  // ============================================================
+  // SCENARIO 2: Observer et intervenir en temps réel
+  // ============================================================
+  function playSC2() {
+    resetAll();
+    hideNarration();
+
+    showNarration({
+      label: 'Scénario 2',
+      title: 'Observer et intervenir',
+      situation: 'En milieu de séance, M. David observe que certains élèves ne travaillent plus sur la tâche demandée. Il veut vérifier les écrans, verrouiller les tablettes des élèves distraits, puis consulter les messages reçus pour comprendre les blocages.',
+      characters: [
+        { name: 'Thomas David', initials: 'TD', color: '#3b82f6', role: 'Enseignant — surveille l\'activité' },
+        { name: 'Ravi Singh', initials: 'RS', color: '#f97316', role: 'Élève — a une question' },
+        { name: 'Emma Durand', initials: 'ED', color: '#ef4444', role: 'Élève — distraite sur Wikipedia' },
+      ],
+      steps: [
+        { who: 'teacher', action: 'Basculer en vue écrans', detail: 'M. David clique sur le bouton moniteur pour voir les écrans de tous les élèves.' },
+        { who: 'teacher', action: 'Repérer un élève distrait', detail: 'Il voit qu\'Emma navigue sur un site hors-sujet. Un badge rouge d\'alerte apparaît.' },
+        { who: 'teacher', action: 'Verrouiller les écrans', detail: 'Il verrouille toutes les tablettes pour recentrer la classe.' },
+        { who: 'student', action: 'Voir son écran verrouillé', detail: 'Emma voit son écran grisé avec le message de verrouillage.' },
+        { who: 'teacher', action: 'Consulter les messages', detail: 'M. David lit les messages : Ravi a posé une question et attend une réponse.' },
+        { who: 'teacher', action: 'Déverrouiller', detail: 'Il déverrouille les tablettes et reprend le cours.' },
+      ],
+    });
+
+    const tl = gsap.timeline({ delay: 0.8 });
+    currentTL = tl;
+
+    // Start on active screen
+    tl.add(() => setNarrationStep(0, 'Vue d\'ensemble par miniatures : chaque carte affiche un aperçu en temps réel de l\'écran de l\'élève. Cette transparence permet à l\'enseignant de superviser sans se déplacer physiquement. Le grid 6 colonnes optimise la densité d\'information.'));
+    setupActiveScreen();
+
+    // Switch to screen view
+    const btnScreenView = document.getElementById('p-btn-screen-view');
+    const mgmtGrid = document.getElementById('p-grid-mgmt');
+    const screenGrid = document.getElementById('p-grid-active');
+    const screenCards = screens.active.querySelectorAll('.sc-screen-card');
+
+    tl.add(() => moveCursor(btnScreenView, null), '+=0.3');
+    tl.add(() => {
+      btnScreenView.style.background = '#007aff'; btnScreenView.style.color = '#fff';
+      gsap.to(mgmtGrid, { opacity: 0, duration: 0.25, ease: smooth, onComplete: () => mgmtGrid.classList.add('hidden') });
+    }, '+=0.15');
+    tl.add(() => {
+      screenGrid.classList.remove('hidden');
+      screenCards.forEach(c => {
+        const content = c.querySelector('.sc-screen-content');
+        if (content) gsap.set(content, { opacity: 0, scale: 0.9 });
+        gsap.set(c, { opacity: 0, y: 12, scale: 0.95 });
+      });
+    }, '+=0.15');
+    tl.add(() => {
+      screenCards.forEach((c, i) => {
+        gsap.to(c, { opacity: 1, y: 0, scale: 1, duration: 0.3, delay: i * 0.03, ease: springS });
+        const content = c.querySelector('.sc-screen-content');
+        if (content) gsap.to(content, { opacity: 1, scale: 1, duration: 0.3, delay: i * 0.03 + 0.1, ease: smooth });
+      });
+    });
+    tl.add(() => {}, '+=0.8');
+
+    // Step 2: Spot distracted student
+    tl.add(() => setNarrationStep(1, 'Signalétique par couleur : les bordures colorées (vert = terminé, rouge = alerte, bleu = actif) sont un code visuel universel qui ne nécessite pas de lecture. L\'enseignant repère instantanément les situations qui requièrent son attention.'));
+    tl.add(() => {
+      [3, 7].forEach(i => screenCards[i]?.classList.add('border-green'));
+      [4].forEach(i => screenCards[i]?.classList.add('border-red'));
+      [0, 8, 5].forEach(i => screenCards[i]?.classList.add('border-blue'));
+    }, '+=0.3');
+    tl.add(() => {}, '+=1.2');
+
+    // Step 3: Lock screens
+    tl.add(() => setNarrationStep(2, 'Verrouillage non-bloquant : contrairement à un overlay plein écran, le verrouillage garde la vue enseignant intacte. L\'enseignant conserve le contrôle total (envoyer des ressources, déverrouiller individuellement). Le banner flottant signale l\'état sans masquer l\'information.'));
+    const lockBtn = document.getElementById('p-btn-lock');
+    tl.add(() => moveCursor(lockBtn, null));
+    tl.add(() => { lockBtn.classList.add('active-btn'); }, '+=0.12');
+
+    tl.add(() => {
+      screenCards.forEach((card, i) => {
+        const screenContent = card.querySelector('.sc-screen-content');
+        const screenOff = card.querySelector('.sc-screen-off');
+        const status = card.querySelector('.sc-card-status');
+        if (status) { status.dataset.originalText = status.textContent; status.dataset.originalClass = status.className.replace('sc-card-status ', ''); }
+        gsap.to(screenContent, { opacity: 0, scale: 0.95, duration: 0.3, delay: i * 0.04, ease: smooth });
+        gsap.to(screenOff, { opacity: 1, duration: 0.3, delay: i * 0.04 + 0.1, ease: smooth });
+        setTimeout(() => {
+          card.classList.remove('border-blue', 'border-green', 'border-red');
+          card.classList.add('locked');
+          if (status) { status.textContent = 'Verrouillé'; status.style.background = '#fef2f2'; status.style.color = '#ef4444'; }
+        }, i * 40 + 150);
+      });
+    }, '+=0.3');
+    tl.add(() => {}, '+=1');
+
+    // Step 4: Student sees lock
+    tl.add(() => setNarrationStep(3, 'Feedback clair pour l\'élève : un écran verrouillé affiche un message explicite sans être punitif. Le ton neutre (« verrouillé par l\'enseignant ») contextualise la situation comme un acte pédagogique, pas une sanction.'));
+    tl.add(() => showScreen('student'));
+    gsap.set('#p-session-fill', { width: '55%' });
+    const lock = document.getElementById('p-student-lock');
+    tl.add(() => {
+      lock.classList.remove('hidden');
+      gsap.fromTo(lock, { opacity: 0 }, { opacity: 1, duration: 0.4, ease: smooth });
+    }, '+=0.3');
+    tl.add(() => {}, '+=2');
+
+    // Step 5: Check messages
+    tl.add(() => setNarrationStep(4, 'Panneau de messages contextualisé : chaque message affiche l\'avatar de l\'élève, le contenu, et un horodatage. Les emojis sémantiques (pouce, question, check) permettent un tri visuel instantané. L\'enseignant peut prioriser les urgences.'));
+    tl.add(() => {
+      gsap.to(lock, { opacity: 0, duration: 0.3, ease: smooth, onComplete: () => lock.classList.add('hidden') });
+    });
+    tl.add(() => showScreen('active'), '+=0.3');
+
+    const messagesPanel = document.getElementById('p-messages-panel');
+    tl.add(() => {
+      messagesPanel.classList.remove('hidden');
+      gsap.fromTo(messagesPanel, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: springS });
+    }, '+=0.3');
+
+    const msgs = messagesPanel.querySelectorAll('.sc-msg-row');
+    msgs.forEach((m, i) => {
+      gsap.set(m, { opacity: 0, x: -20 });
+      tl.to(m, { opacity: 1, x: 0, duration: 0.35, ease: springS }, `-=${i > 0 ? 0.15 : 0}`);
+    });
+    tl.add(() => {}, '+=1.5');
+
+    // Step 6: Unlock
+    tl.add(() => setNarrationStep(5, 'Réversibilité immédiate : le déverrouillage est aussi simple que le verrouillage — un seul clic sur le même bouton. Ce pattern symétrique réduit la charge cognitive et encourage l\'enseignant à utiliser le verrouillage comme un outil courant, pas une mesure exceptionnelle.'));
+    tl.add(() => {
+      messagesPanel.classList.add('hidden');
+      lockBtn.classList.remove('active-btn');
+    });
+    tl.add(() => {}, '+=1');
+  }
+
+  // ============================================================
+  // SCENARIO 3: Différencier les parcours d'apprentissage
+  // ============================================================
+  function playSC3() {
+    resetAll();
+    hideNarration();
+
+    showNarration({
+      label: 'Scénario 3',
+      title: 'Différencier les parcours',
+      situation: 'M. David veut proposer un parcours adapté à chaque niveau. Il crée un groupe « Approfondissement » avec les élèves avancés, leur envoie un exercice supplémentaire, puis vérifie que les autres élèves consultent bien le cours de base.',
+      characters: [
+        { name: 'Thomas David', initials: 'TD', color: '#3b82f6', role: 'Enseignant — différencie les tâches' },
+        { name: 'Lucas Faure', initials: 'LF', color: '#8b5cf6', role: 'Élève avancé — groupe Approfondissement' },
+        { name: 'Aya Bouchami', initials: 'AB', color: '#22c55e', role: 'Élève — suit le parcours standard' },
+      ],
+      steps: [
+        { who: 'teacher', action: 'Créer un groupe', detail: 'M. David crée le groupe « Approfondissement » et sélectionne 5 élèves avancés.' },
+        { who: 'teacher', action: 'Envoyer un exercice ciblé', detail: 'Il envoie un document supplémentaire uniquement au groupe.' },
+        { who: 'student', action: 'Recevoir l\'exercice', detail: 'Lucas reçoit une notification et ouvre l\'exercice d\'approfondissement.' },
+        { who: 'teacher', action: 'Observer les élèves standard', detail: 'M. David revient sur la vue globale et vérifie que les autres élèves travaillent sur le cours.' },
+        { who: 'student', action: 'Signaler « J\'ai terminé »', detail: 'Aya termine le cours standard et envoie le message à l\'enseignant.' },
+      ],
+    });
+
+    const tl = gsap.timeline({ delay: 0.8 });
+    currentTL = tl;
+
+    // Step 1: Create group
+    tl.add(() => setNarrationStep(0, 'Sélection par chips : la grille de sélection utilise des avatars colorés pour faciliter l\'identification visuelle. Le pattern de multi-sélection avec bordure bleue donne un feedback immédiat sur les élèves sélectionnés. Le nombre de groupes n\'est pas limité.'));
+    setupActiveScreen();
+
+    const createGroupBtn = document.getElementById('p-btn-create-group');
+    const groupOverlay = document.getElementById('p-group-overlay');
+    const chips = document.querySelectorAll('.sc-group-chip');
+
+    tl.add(() => moveCursor(createGroupBtn, null), '+=0.3');
+    tl.add(() => { createGroupBtn.classList.add('active-btn'); }, '+=0.15');
+
+    tl.add(() => {
+      groupOverlay.classList.remove('hidden');
+      gsap.fromTo(groupOverlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
+      gsap.fromTo(groupOverlay.querySelector('.sc-group-modal'), { scale: 0.95, y: 20 }, { scale: 1, y: 0, duration: 0.35, ease: iosSpring });
+    }, '+=0.2');
+
+    [0, 5, 7, 10, 2].forEach((idx, i) => {
+      tl.add(() => {
+        const chip = chips[idx];
+        if (chip) { chip.classList.add('selected'); gsap.fromTo(chip, { scale: 0.95 }, { scale: 1, duration: 0.15, ease: smooth }); }
+      }, i === 0 ? '+=0.4' : '+=0.2');
+    });
+
+    const groupConfirm = document.getElementById('p-group-confirm');
+    tl.add(() => moveCursor(groupConfirm, null), '+=0.3');
+    tl.add(() => {
+      gsap.to(groupOverlay, { opacity: 0, duration: 0.25, ease: smooth, onComplete: () => groupOverlay.classList.add('hidden') });
+      createGroupBtn.classList.remove('active-btn');
+    }, '+=0.15');
+
+    // New pill
+    tl.add(() => {
+      const groupBar = screens.active.querySelector('.sc-group-bar');
+      const addBtn = document.getElementById('p-btn-group-add');
+      const pill = document.createElement('button');
+      pill.className = 'sc-group-pill';
+      pill.textContent = 'Approfondissement';
+      groupBar.insertBefore(pill, addBtn);
+      gsap.fromTo(pill, { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.3, ease: iosSpring });
+    }, '+=0.2');
+    tl.add(() => {}, '+=0.8');
+
+    // Step 2: Send targeted resource
+    tl.add(() => setNarrationStep(1, 'Envoi ciblé vs envoi global : le même workflow d\'envoi de ressource est réutilisé, mais le contexte de groupe filtre automatiquement les destinataires. La cohérence du pattern rassure l\'enseignant — pas de nouvelle interface à apprendre.'));
+    const shareDocBtn = document.getElementById('p-btn-share-doc');
+    tl.add(() => moveCursor(shareDocBtn, null));
+    tl.add(() => { shareDocBtn.classList.add('active-btn'); }, '+=0.15');
+
+    const sendOverlay = document.getElementById('p-send-overlay');
+    tl.add(() => {
+      sendOverlay.classList.remove('hidden');
+      gsap.fromTo(sendOverlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
+      gsap.fromTo(sendOverlay.querySelector('.sc-send-modal'), { scale: 0.95, y: 20 }, { scale: 1, y: 0, duration: 0.35, ease: smooth });
+    }, '+=0.2');
+    const confirmBtn = document.getElementById('p-send-confirm');
+    tl.add(() => moveCursor(confirmBtn, null), '+=0.5');
+    tl.add(() => {
+      const check = document.getElementById('p-send-check');
+      check.classList.remove('hidden');
+      gsap.fromTo(check, { scale: 0 }, { scale: 1, duration: 0.3, ease: smooth });
+    }, '+=0.15');
+    tl.add(() => {
+      gsap.to(sendOverlay, { opacity: 0, duration: 0.25, ease: smooth, onComplete: () => sendOverlay.classList.add('hidden') });
+      shareDocBtn.classList.remove('active-btn');
+    }, '+=0.5');
+    tl.add(() => {}, '+=0.8');
+
+    // Step 3: Student receives
+    tl.add(() => setNarrationStep(2, 'Cohérence élève-enseignant : l\'élève retrouve le même pattern de notification toast et le même panneau de ressources. La continuité visuelle entre les deux interfaces réduit la confusion et accélère l\'adoption.'));
+    tl.add(() => showScreen('student'));
+    resetStudentScreen();
+    gsap.set('#p-session-fill', { width: '40%' });
+
+    const toast = document.getElementById('p-toast');
+    tl.add(() => {
+      toast.classList.remove('hidden');
+      gsap.fromTo(toast, { y: -30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: iosSpring });
+    }, '+=0.4');
+    tl.add(() => {}, '+=1');
+
+    const pdfRes = screens.student.querySelector('[data-res="pdf"]');
+    tl.add(() => moveCursor(pdfRes, null));
+    tl.add(() => { pdfRes.classList.add('highlight'); }, '+=0.1');
+    tl.add(() => openResPanel('pdf'), '+=0.25');
+    tl.add(() => {
+      gsap.to(toast, { y: -20, opacity: 0, duration: 0.3, ease: smooth, onComplete: () => toast.classList.add('hidden') });
+    }, '+=0.5');
+    tl.add(() => {}, '+=1');
+
+    // Step 4: Teacher observes
+    tl.add(() => setNarrationStep(3, 'Vue d\'ensemble toujours accessible : l\'enseignant peut revenir à la vue globale à tout moment. Les badges d\'interaction persistent même quand il change de vue, assurant la continuité de l\'information.'));
+    tl.add(() => { pdfRes.classList.remove('highlight'); closeResPanel(); });
+    tl.add(() => showScreen('active'), '+=0.3');
+
+    const mgmtCards = screens.active.querySelectorAll('.sc-mgmt-card');
+    [{ idx: 3, type: 'badge-done' }, { idx: 7, type: 'badge-done' }, { idx: 11, type: 'badge-done' }].forEach(bd => {
+      const card = mgmtCards[bd.idx];
+      if (card) {
+        const badge = card.querySelector('.sc-interaction-badge');
+        if (badge) { badge.className = 'sc-interaction-badge ' + bd.type; badge.innerHTML = '<i class="ph-fill ph-check-circle" style="font-size:11px"></i>'; card.classList.add('badge-active'); }
+      }
+    });
+    tl.add(() => {}, '+=1.5');
+
+    // Step 5: Student signals done
+    tl.add(() => setNarrationStep(4, 'Messages pré-définis (chips) : les boutons-messages évitent à l\'élève de taper du texte, réduisant les distractions et la perte de temps. Le vocabulaire limité et positif (« j\'ai terminé », « j\'ai compris ») encourage la communication pédagogique.'));
+    tl.add(() => showScreen('student'));
+    resetStudentScreen();
+    gsap.set('#p-session-fill', { width: '85%' });
+
+    const chip = screens.student.querySelector('[data-msg="termine"]');
+    tl.add(() => moveCursor(chip, null), '+=0.3');
+    tl.add(() => { chip.classList.add('selected'); }, '+=0.1');
+    const sendBtn = document.getElementById('p-btn-send');
+    tl.add(() => moveCursor(sendBtn, null), '+=0.3');
+    tl.to(sendBtn, { scale: 0.96, duration: 0.06 }, '+=0.05');
+    tl.to(sendBtn, { scale: 1, duration: 0.2, ease: smooth });
+
+    const msgPanel = document.getElementById('p-panel-messages');
+    const confirm = document.getElementById('p-confirm');
+    tl.add(() => { gsap.to(msgPanel, { opacity: 0, duration: 0.2, ease: smooth, onComplete: () => { msgPanel.style.display = 'none'; } }); }, '+=0.15');
+    tl.add(() => { confirm.classList.remove('hidden'); gsap.fromTo(confirm, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.3, ease: smooth }); }, '+=0.1');
+    tl.to('#p-session-fill', { width: '100%', duration: 0.8, ease: smooth }, '-=0.2');
+    tl.add(() => {}, '+=1');
+  }
+
+  // ============================================================
+  // SCENARIO 4: Évaluer en direct
+  // ============================================================
+  function playSC4() {
+    resetAll();
+    hideNarration();
+
+    showNarration({
+      label: 'Scénario 4',
+      title: 'Évaluer en direct',
+      situation: 'Avant de passer au chapitre suivant, M. David veut vérifier que la majorité de la classe a compris la notion de force gravitationnelle. Il lance un sondage rapide, analyse les résultats en temps réel, et projette les résultats à toute la classe.',
+      characters: [
+        { name: 'Thomas David', initials: 'TD', color: '#3b82f6', role: 'Enseignant — évalue la compréhension' },
+        { name: 'Chloé Dupont', initials: 'CD', color: '#ec4899', role: 'Élève — a bien compris' },
+        { name: 'Nolan Garnier', initials: 'NG', color: '#6366f1', role: 'Élève — n\'a pas compris' },
+      ],
+      steps: [
+        { who: 'teacher', action: 'Lancer un sondage', detail: 'M. David ouvre le sondage rapide avec une question sur la force gravitationnelle.' },
+        { who: 'teacher', action: 'Observer les réponses', detail: 'Les résultats arrivent en temps réel : barres de progression et pourcentages.' },
+        { who: 'teacher', action: 'Analyser les résultats', detail: '52% ont compris, 30% partiellement, 18% n\'ont pas compris du tout.' },
+        { who: 'teacher', action: 'Projeter les résultats', detail: 'M. David partage son écran pour montrer les résultats à la classe et en discuter.' },
+      ],
+    });
+
+    const tl = gsap.timeline({ delay: 0.8 });
+    currentTL = tl;
+
+    // Step 1: Launch poll
+    tl.add(() => setNarrationStep(0, 'Sondage intégré : pas besoin d\'outil externe (Google Forms, Kahoot). Le sondage est natif à l\'interface, réduisant les frictions. Les options pré-formatées (oui/partiellement/non) couvrent l\'essentiel de l\'évaluation formative.'));
+    setupActiveScreen();
+
+    const pollOverlay = document.getElementById('p-poll-overlay');
+    tl.add(() => {
+      pollOverlay.classList.remove('hidden');
+      gsap.fromTo(pollOverlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
+      gsap.fromTo(pollOverlay.querySelector('.sc-poll-modal'), { scale: 0.95, y: 20 }, { scale: 1, y: 0, duration: 0.35, ease: iosSpring });
+    }, '+=0.3');
+
+    const launchBtn = document.getElementById('p-poll-launch');
+    tl.add(() => moveCursor(launchBtn, null), '+=0.5');
+    tl.add(() => {
+      launchBtn.textContent = 'Sondage envoyé';
+      launchBtn.style.background = '#34c759';
+    }, '+=0.1');
+    tl.add(() => {}, '+=0.5');
+
+    // Step 2: Watch results
+    tl.add(() => setNarrationStep(1, 'Feedback en temps réel : les barres de progression s\'animent au fur et à mesure que les réponses arrivent. Le compteur « X/23 réponses » crée un sentiment d\'urgence positive et permet à l\'enseignant de savoir quand tout le monde a répondu.'));
+    const statusEl = document.getElementById('p-poll-status');
+    const fills = pollOverlay.querySelectorAll('.sc-poll-fill');
+    const pcts = pollOverlay.querySelectorAll('.sc-poll-pct');
+
+    tl.add(() => {
+      statusEl.innerHTML = '<span class="sc-dot green"></span> 8/23 réponses';
+      gsap.to(fills[0], { width: '50%', duration: 0.6, ease: smooth }); pcts[0].textContent = '50%';
+      gsap.to(fills[1], { width: '30%', duration: 0.6, ease: smooth }); pcts[1].textContent = '25%';
+      gsap.to(fills[2], { width: '20%', duration: 0.6, ease: smooth }); pcts[2].textContent = '25%';
+    }, '+=0.5');
+    tl.add(() => {
+      statusEl.innerHTML = '<span class="sc-dot green"></span> 18/23 réponses';
+      gsap.to(fills[0], { width: '65%', duration: 0.6, ease: smooth }); pcts[0].textContent = '56%';
+      gsap.to(fills[1], { width: '45%', duration: 0.6, ease: smooth }); pcts[1].textContent = '28%';
+      gsap.to(fills[2], { width: '25%', duration: 0.6, ease: smooth }); pcts[2].textContent = '16%';
+    }, '+=1');
+
+    // Step 3: Analyze
+    tl.add(() => setNarrationStep(2, 'Visualisation intuitive : le code couleur vert/orange/rouge associé aux barres de progression permet une lecture immédiate des résultats. L\'enseignant n\'a pas besoin d\'analyser des chiffres — le visuel parle de lui-même.'));
+    tl.add(() => {
+      statusEl.innerHTML = '<span class="sc-dot green"></span> 23/23 réponses';
+      gsap.to(fills[0], { width: '70%', duration: 0.6, ease: smooth }); pcts[0].textContent = '52%';
+      gsap.to(fills[1], { width: '50%', duration: 0.6, ease: smooth }); pcts[1].textContent = '30%';
+      gsap.to(fills[2], { width: '30%', duration: 0.6, ease: smooth }); pcts[2].textContent = '18%';
+    }, '+=0.8');
+    tl.add(() => {}, '+=1.5');
+
+    // Close poll
+    tl.add(() => {
+      gsap.to(pollOverlay, { opacity: 0, duration: 0.25, ease: smooth, onComplete: () => {
+        pollOverlay.classList.add('hidden');
+        launchBtn.textContent = 'Envoyer le sondage'; launchBtn.style.background = '';
+        fills.forEach(f => f.style.width = '0%'); pcts.forEach(p => p.textContent = '0%');
+        statusEl.innerHTML = '<span class="sc-dot green"></span> 0/23 réponses';
+      }});
+    });
+
+    // Step 4: Project results
+    tl.add(() => setNarrationStep(3, 'Projection sans changement d\'outil : le même bouton « Partager l\'écran » diffuse instantanément le contenu de l\'enseignant. La modal de projection montre un aperçu en direct et un statut de diffusion, donnant confiance que les élèves voient bien le contenu.'));
+
+    const shareScreenBtn = document.getElementById('p-btn-share-screen');
+    const projectOverlay = document.getElementById('p-project-overlay');
+    tl.add(() => moveCursor(shareScreenBtn, null), '+=0.3');
+    tl.add(() => { shareScreenBtn.classList.add('active-btn'); }, '+=0.15');
+
+    tl.add(() => {
+      projectOverlay.classList.remove('hidden');
+      gsap.fromTo(projectOverlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
+      gsap.fromTo(projectOverlay.querySelector('.sc-project-modal'), { scale: 0.95, y: 20, opacity: 0 }, { scale: 1, y: 0, opacity: 1, duration: 0.4, ease: iosSpring });
+    }, '+=0.2');
+
+    tl.add(() => {}, '+=2.5');
+
+    const stopBtn = document.getElementById('p-btn-stop-project');
+    tl.add(() => moveCursor(stopBtn, null));
+    tl.add(() => {
+      gsap.to(projectOverlay, { opacity: 0, duration: 0.3, ease: smooth, onComplete: () => projectOverlay.classList.add('hidden') });
+      shareScreenBtn.classList.remove('active-btn');
+    }, '+=0.15');
+    tl.add(() => {}, '+=1');
+  }
+
+  // ============================================================
+  // SCENARIO 5: Collaborer et rendre un travail
+  // ============================================================
+  function playSC5() {
+    resetAll();
+    hideNarration();
+
+    showNarration({
+      label: 'Scénario 5',
+      title: 'Collaborer et rendre',
+      situation: 'En fin de séance, les élèves doivent rendre leur travail. Chloé téléverse son devoir, Ravi a une question avant de rendre le sien. M. David répond à Ravi, projette le travail de Chloé comme exemple, et clôt la séance.',
+      characters: [
+        { name: 'Thomas David', initials: 'TD', color: '#3b82f6', role: 'Enseignant — accompagne le rendu' },
+        { name: 'Chloé Dupont', initials: 'CD', color: '#ec4899', role: 'Élève — rend son travail' },
+        { name: 'Ravi Singh', initials: 'RS', color: '#f97316', role: 'Élève — demande une clarification' },
+      ],
+      steps: [
+        { who: 'student', action: 'Déposer un document', detail: 'Chloé glisse son fichier dans la zone de dépôt, le fichier s\'uploade avec une barre de progression.' },
+        { who: 'student', action: 'Poser une question', detail: 'Ravi sélectionne « J\'ai une question » et envoie le message à l\'enseignant.' },
+        { who: 'teacher', action: 'Voir les notifications', detail: 'M. David voit les badges d\'interaction : Chloé a terminé, Ravi a une question.' },
+        { who: 'teacher', action: 'Répondre à Ravi', detail: 'M. David ouvre le message de Ravi et lui répond « Regarde la page 12 du cours ».' },
+        { who: 'teacher', action: 'Projeter le travail de Chloé', detail: 'Il projette l\'écran pour montrer le travail exemplaire de Chloé à toute la classe.' },
+      ],
+    });
+
+    const tl = gsap.timeline({ delay: 0.8 });
+    currentTL = tl;
+
+    // Step 1: Student uploads
+    tl.add(() => setNarrationStep(0, 'Zone de dépôt (drag & drop) : le pattern de glisser-déposer est naturel sur tablette. Les états visuels progressifs (zone neutre → survol bleu → fichier déposé → barre de progression → confirmation verte) guident l\'élève à chaque étape sans instructions textuelles.'));
+    tl.add(() => showScreen('student'));
+    resetStudentScreen();
+    gsap.set('#p-session-fill', { width: '75%' });
+
+    const uploadZone = document.getElementById('p-upload-zone');
+    const droppedFile = document.getElementById('p-dropped-file');
+    const progressBar = document.getElementById('p-upload-progress');
+    const progressFill = document.getElementById('p-upload-fill');
+    const btnSendFile = document.getElementById('p-btn-send-file');
+    const uploaded = document.getElementById('p-uploaded-file');
+
+    tl.add(() => moveCursor(uploadZone, null), '+=0.3');
+    tl.add(() => { uploadZone.classList.add('drag-over'); gsap.to(uploadZone, { scale: 1.01, duration: 0.25, ease: smooth }); }, '+=0.15');
+    tl.add(() => { uploadZone.classList.remove('drag-over'); gsap.to(uploadZone, { scale: 1, opacity: 0, duration: 0.2, ease: smooth, onComplete: () => { uploadZone.style.display = 'none'; } }); }, '+=0.4');
+    tl.add(() => { droppedFile.classList.remove('hidden'); gsap.fromTo(droppedFile, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.3, ease: smooth }); }, '+=0.15');
+    tl.add(() => moveCursor(btnSendFile, null), '+=0.3');
+    tl.add(() => {
+      btnSendFile.style.display = 'none';
+      progressBar.classList.remove('hidden');
+    }, '+=0.15');
+    tl.to(progressFill, { width: '100%', duration: 0.8, ease: smooth }, '+=0.1');
+    tl.add(() => { gsap.to(droppedFile, { opacity: 0, duration: 0.2, ease: smooth, onComplete: () => droppedFile.classList.add('hidden') }); }, '+=0.2');
+    tl.add(() => { uploaded.classList.remove('hidden'); gsap.fromTo(uploaded, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.3, ease: smooth }); }, '+=0.15');
+    tl.add(() => {}, '+=0.8');
+
+    // Step 2: Another student asks question
+    tl.add(() => setNarrationStep(1, 'Vocabulaire limité et bienveillant : les messages pré-définis (« J\'ai une question ») normalisent la demande d\'aide. L\'élève n\'a pas à formuler sa question par écrit, réduisant la barrière sociale. Le message est envoyé de manière asynchrone sans interrompre la classe.'));
+    resetStudentScreen();
+    gsap.set('#p-session-fill', { width: '70%' });
+    const questionChip = screens.student.querySelector('[data-msg="question"]');
+    tl.add(() => moveCursor(questionChip, null), '+=0.3');
+    tl.add(() => { questionChip.classList.add('selected'); }, '+=0.1');
+    const sendBtn = document.getElementById('p-btn-send');
+    tl.add(() => moveCursor(sendBtn, null), '+=0.3');
+    tl.to(sendBtn, { scale: 0.96, duration: 0.06 }, '+=0.05');
+    tl.to(sendBtn, { scale: 1, duration: 0.2, ease: smooth });
+    const msgPanel = document.getElementById('p-panel-messages');
+    const confirm = document.getElementById('p-confirm');
+    tl.add(() => { gsap.to(msgPanel, { opacity: 0, duration: 0.2, ease: smooth, onComplete: () => { msgPanel.style.display = 'none'; } }); }, '+=0.15');
+    tl.add(() => { confirm.classList.remove('hidden'); gsap.fromTo(confirm, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.3, ease: smooth }); }, '+=0.1');
+    tl.add(() => {}, '+=0.8');
+
+    // Step 3: Teacher sees notifications
+    tl.add(() => setNarrationStep(2, 'Badges comme système nerveux : les badges colorés sur les cartes élèves fonctionnent comme un tableau de bord en temps réel. L\'enseignant voit d\'un coup d\'œil qui a terminé (vert), qui a besoin d\'aide (orange), et peut prioriser ses interventions.'));
+    tl.add(() => showScreen('active'));
+    setupActiveScreen();
+    const mgmtCards = screens.active.querySelectorAll('.sc-mgmt-card');
+
+    tl.add(() => {
+      // Chloé done
+      const chloeCard = mgmtCards[4];
+      if (chloeCard) {
+        const badge = chloeCard.querySelector('.sc-interaction-badge');
+        if (badge) { badge.className = 'sc-interaction-badge badge-done'; badge.innerHTML = '<i class="ph-fill ph-check-circle" style="font-size:11px"></i>'; chloeCard.classList.add('badge-active'); gsap.fromTo(badge, { scale: 0 }, { scale: 1, duration: 0.25, ease: iosSpring }); }
+      }
+      // Ravi question
+      const raviCard = mgmtCards[9];
+      if (raviCard) {
+        const badge = raviCard.querySelector('.sc-interaction-badge');
+        if (badge) { badge.className = 'sc-interaction-badge badge-question'; badge.innerHTML = '<i class="ph-fill ph-question" style="font-size:11px"></i>'; raviCard.classList.add('badge-active'); gsap.fromTo(badge, { scale: 0 }, { scale: 1, duration: 0.25, delay: 0.2, ease: iosSpring }); }
+      }
+    }, '+=0.5');
+    tl.add(() => {}, '+=1.2');
+
+    // Step 4: Reply to Ravi
+    tl.add(() => setNarrationStep(3, 'Réponse rapide contextuelle : la modal de réponse pré-remplit le contexte (nom de l\'élève, son message). Les chips de réponse rapide (OK, Patience, Voir le cours) accélèrent la réponse sans saisie clavier. L\'enseignant peut aussi taper un message personnalisé.'));
+    const raviCard2 = mgmtCards[9];
+    tl.add(() => moveCursor(raviCard2, null));
+
+    const replyOverlay = document.getElementById('p-reply-overlay');
+    tl.add(() => {
+      replyOverlay.classList.remove('hidden');
+      gsap.fromTo(replyOverlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
+      gsap.fromTo(replyOverlay.querySelector('.sc-reply-modal'), { scale: 0.95, y: 15 }, { scale: 1, y: 0, duration: 0.35, ease: iosSpring });
+    }, '+=0.2');
+    tl.add(() => {}, '+=0.8');
+
+    const replySend = document.getElementById('p-reply-send');
+    tl.add(() => moveCursor(replySend, null));
+    tl.add(() => {
+      gsap.to(replyOverlay, { opacity: 0, duration: 0.25, ease: smooth, onComplete: () => replyOverlay.classList.add('hidden') });
+    }, '+=0.15');
+
+    // Badge changes
+    tl.add(() => {
+      if (raviCard2) {
+        const badge = raviCard2.querySelector('.sc-interaction-badge');
+        if (badge) { badge.className = 'sc-interaction-badge badge-understood'; badge.innerHTML = '<i class="ph-fill ph-check-circle" style="font-size:11px"></i>'; gsap.fromTo(badge, { scale: 0.5 }, { scale: 1, duration: 0.25, ease: iosSpring }); }
+      }
+    }, '+=0.3');
+    tl.add(() => {}, '+=0.8');
+
+    // Step 5: Project Chloé's work
+    tl.add(() => setNarrationStep(4, 'Valorisation du travail élève : projeter le travail d\'un élève comme exemple positif renforce la motivation intrinsèque. Le pattern de projection est le même que pour l\'écran enseignant, mais le contexte pédagogique change : montrer → valoriser → inspirer.'));
+    const shareScreenBtn = document.getElementById('p-btn-share-screen');
+    const projectOverlay = document.getElementById('p-project-overlay');
+    tl.add(() => moveCursor(shareScreenBtn, null));
+    tl.add(() => { shareScreenBtn.classList.add('active-btn'); }, '+=0.15');
+
+    tl.add(() => {
+      projectOverlay.classList.remove('hidden');
+      gsap.fromTo(projectOverlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
+      gsap.fromTo(projectOverlay.querySelector('.sc-project-modal'), { scale: 0.95, y: 20, opacity: 0 }, { scale: 1, y: 0, opacity: 1, duration: 0.4, ease: iosSpring });
+    }, '+=0.2');
+    tl.add(() => {}, '+=2');
+
+    const stopBtn = document.getElementById('p-btn-stop-project');
+    tl.add(() => moveCursor(stopBtn, null));
+    tl.add(() => {
+      gsap.to(projectOverlay, { opacity: 0, duration: 0.3, ease: smooth, onComplete: () => projectOverlay.classList.add('hidden') });
+      shareScreenBtn.classList.remove('active-btn');
+    }, '+=0.15');
+    tl.add(() => {}, '+=1');
+  }
+
   // ============================================================
   // NAVIGATION
   // ============================================================
   const protoMap = {
     t1: playT1, t2: playT2, t3: playT3, t4: playT4, t5: playT5,
     t6: playT6, t7: playT7, t8: playT8, t9: playT9,
+    t10: playT10, t11: playT11,
     s1: playS1, s2: playS2, s3: playS3, s4: playS4, s5: playS5,
+    s6: playS6, s7: playS7,
+    sc1: playSC1, sc2: playSC2, sc3: playSC3, sc4: playSC4, sc5: playSC5,
   };
 
   function navigateTo(id) {
     if (currentTL) { currentTL.kill(); currentTL = null; }
     gsap.set(cursor, { opacity: 0 });
     currentProto = id;
+
+    // Hide narration panel for non-scenario prototypes
+    if (!id.startsWith('sc')) {
+      hideNarration();
+    }
 
     tocItems.forEach(item => {
       item.classList.toggle('active', item.dataset.proto === id);

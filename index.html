@@ -473,6 +473,8 @@
         <button class="proto-toc-item" data-proto="t7"><span class="proto-toc-num">7</span>Projeter son écran</button>
         <button class="proto-toc-item" data-proto="t8"><span class="proto-toc-num">8</span>Prendre la main</button>
         <button class="proto-toc-item" data-proto="t9"><span class="proto-toc-num">9</span>Créer des groupes</button>
+        <button class="proto-toc-item" data-proto="t10"><span class="proto-toc-num">10</span>Lancer un sondage</button>
+        <button class="proto-toc-item" data-proto="t11"><span class="proto-toc-num">11</span>Répondre à un élève</button>
       </div>
 
       <div class="proto-toc-group">
@@ -480,11 +482,27 @@
           <i class="ph ph-student" style="font-size:14px"></i>
           Élève
         </div>
-        <button class="proto-toc-item" data-proto="s1"><span class="proto-toc-num">10</span>Rejoindre la séance</button>
-        <button class="proto-toc-item" data-proto="s2"><span class="proto-toc-num">11</span>Consulter les ressources</button>
-        <button class="proto-toc-item" data-proto="s3"><span class="proto-toc-num">12</span>Envoyer « J'ai terminé »</button>
-        <button class="proto-toc-item" data-proto="s4"><span class="proto-toc-num">13</span>Poser une question</button>
-        <button class="proto-toc-item" data-proto="s5"><span class="proto-toc-num">14</span>Partager un document</button>
+        <button class="proto-toc-item" data-proto="s1"><span class="proto-toc-num">12</span>Rejoindre la séance</button>
+        <button class="proto-toc-item" data-proto="s2"><span class="proto-toc-num">13</span>Consulter les ressources</button>
+        <button class="proto-toc-item" data-proto="s3"><span class="proto-toc-num">14</span>Envoyer « J'ai terminé »</button>
+        <button class="proto-toc-item" data-proto="s4"><span class="proto-toc-num">15</span>Poser une question</button>
+        <button class="proto-toc-item" data-proto="s5"><span class="proto-toc-num">16</span>Partager un document</button>
+        <button class="proto-toc-item" data-proto="s6"><span class="proto-toc-num">17</span>Recevoir une ressource</button>
+        <button class="proto-toc-item" data-proto="s7"><span class="proto-toc-num">18</span>Écran verrouillé</button>
+      </div>
+
+      <div class="proto-toc-divider"></div>
+
+      <div class="proto-toc-group">
+        <div class="proto-toc-group-label">
+          <i class="ph ph-play-circle" style="font-size:14px"></i>
+          Scénarios
+        </div>
+        <button class="proto-toc-item proto-toc-scenario" data-proto="sc1"><span class="proto-toc-num"><i class="ph ph-number-circle-one" style="font-size:11px"></i></span>Démarrer et distribuer</button>
+        <button class="proto-toc-item proto-toc-scenario" data-proto="sc2"><span class="proto-toc-num"><i class="ph ph-number-circle-two" style="font-size:11px"></i></span>Observer et intervenir</button>
+        <button class="proto-toc-item proto-toc-scenario" data-proto="sc3"><span class="proto-toc-num"><i class="ph ph-number-circle-three" style="font-size:11px"></i></span>Différencier les parcours</button>
+        <button class="proto-toc-item proto-toc-scenario" data-proto="sc4"><span class="proto-toc-num"><i class="ph ph-number-circle-four" style="font-size:11px"></i></span>Évaluer en direct</button>
+        <button class="proto-toc-item proto-toc-scenario" data-proto="sc5"><span class="proto-toc-num"><i class="ph ph-number-circle-five" style="font-size:11px"></i></span>Collaborer et rendre</button>
       </div>
 
       <button class="proto-toc-replay" id="proto-replay">
@@ -499,6 +517,23 @@
       <!-- Animated cursor -->
       <div class="proto-cursor" id="proto-cursor">
         <svg viewBox="0 0 24 24" fill="#fff" stroke="#1a1a2e" stroke-width="1.5"><path d="M4 4l7.07 17 2.51-7.39L21 11.07z"/></svg>
+      </div>
+
+      <!-- Scenario narration panel (hidden by default, shown during scenarios) -->
+      <div class="sc-narration hidden" id="sc-narration">
+        <div class="sc-narration-header">
+          <span class="sc-narration-label" id="sc-narration-label">Scénario 1</span>
+          <span class="sc-narration-title" id="sc-narration-title">Démarrer et distribuer</span>
+        </div>
+        <div class="sc-narration-context" id="sc-narration-context">
+          <p class="sc-narration-situation" id="sc-narration-situation"></p>
+        </div>
+        <div class="sc-narration-characters" id="sc-narration-characters"></div>
+        <div class="sc-narration-steps" id="sc-narration-steps"></div>
+        <div class="sc-narration-ux hidden" id="sc-narration-ux">
+          <div class="sc-narration-ux-label"><i class="ph ph-lightbulb" style="font-size:12px"></i> UX Guideline</div>
+          <p class="sc-narration-ux-text" id="sc-narration-ux-text"></p>
+        </div>
       </div>
 
       <!-- ===== SCREEN: Teacher Pre-Session (Screen 1) ===== -->
@@ -719,6 +754,46 @@
             <div class="sc-group-actions">
               <button class="sc-btn-cancel" id="p-group-cancel">Annuler</button>
               <button class="sc-btn-confirm" id="p-group-confirm">Créer le groupe</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Poll/quiz overlay -->
+        <div class="sc-poll-overlay hidden" id="p-poll-overlay">
+          <div class="sc-poll-modal">
+            <h3><i class="ph ph-chart-bar" style="font-size:18px;color:#007aff"></i> Sondage rapide</h3>
+            <div class="sc-poll-question" id="p-poll-question">Avez-vous compris la notion de force gravitationnelle ?</div>
+            <div class="sc-poll-options" id="p-poll-options">
+              <div class="sc-poll-option" data-val="yes"><i class="ph ph-check-circle" style="font-size:16px;color:#34c759"></i><span>Oui, j'ai compris</span><div class="sc-poll-bar"><div class="sc-poll-fill" style="width:0%"></div></div><span class="sc-poll-pct">0%</span></div>
+              <div class="sc-poll-option" data-val="partial"><i class="ph ph-minus-circle" style="font-size:16px;color:#ff9500"></i><span>Partiellement</span><div class="sc-poll-bar"><div class="sc-poll-fill" style="width:0%"></div></div><span class="sc-poll-pct">0%</span></div>
+              <div class="sc-poll-option" data-val="no"><i class="ph ph-x-circle" style="font-size:16px;color:#ff3b30"></i><span>Non, pas du tout</span><div class="sc-poll-bar"><div class="sc-poll-fill" style="width:0%"></div></div><span class="sc-poll-pct">0%</span></div>
+            </div>
+            <div class="sc-poll-status" id="p-poll-status"><span class="sc-dot green"></span> 0/23 réponses</div>
+            <div class="sc-poll-actions">
+              <button class="sc-btn-cancel" id="p-poll-close">Fermer</button>
+              <button class="sc-btn-confirm" id="p-poll-launch">Envoyer le sondage</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Teacher reply overlay -->
+        <div class="sc-reply-overlay hidden" id="p-reply-overlay">
+          <div class="sc-reply-modal">
+            <div class="sc-reply-header">
+              <div class="sc-msg-avatar rv">RS</div>
+              <div><strong>Ravi Singh</strong><p style="font-size:12px;color:#94a3b8;margin-top:2px">J'ai une question</p></div>
+            </div>
+            <div class="sc-reply-input-row">
+              <input type="text" class="sc-reply-input" id="p-reply-input" value="Bien sûr Ravi, regarde la page 12 du cours." readonly>
+            </div>
+            <div class="sc-reply-quick-chips">
+              <button class="sc-reply-chip"><i class="ph ph-thumbs-up" style="font-size:12px"></i> OK</button>
+              <button class="sc-reply-chip"><i class="ph ph-clock" style="font-size:12px"></i> Patience</button>
+              <button class="sc-reply-chip active"><i class="ph ph-book-open" style="font-size:12px"></i> Voir le cours</button>
+            </div>
+            <div class="sc-reply-actions">
+              <button class="sc-btn-cancel" id="p-reply-cancel">Annuler</button>
+              <button class="sc-btn-confirm" id="p-reply-send">Envoyer</button>
             </div>
           </div>
         </div>
