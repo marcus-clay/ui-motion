@@ -8,10 +8,12 @@
   const stage = document.getElementById('proto-stage');
   if (!stage) return;
 
-  // --- GSAP easing presets ---
-  const spring = 'elastic.out(1, 0.55)';
-  const springS = 'back.out(1.7)';
-  const smooth = 'power3.out';
+  // --- GSAP easing presets (subtle iPadOS motion) ---
+  const spring   = 'power3.out';              // Clean deceleration
+  const springS  = 'power2.out';              // Gentle ease-out
+  const smooth   = 'power2.out';              // Smooth deceleration
+  const iosSnap  = 'power2.inOut';            // iPadOS snap
+  const iosSpring = 'power3.out';             // Smooth iPadOS feel
 
   // --- Screens ---
   const screens = {
@@ -28,25 +30,26 @@
   let currentTL = null;
   let currentProto = null;
 
-  // --- Screen switching ---
+  // --- Screen switching (iPadOS page transition) ---
   function showScreen(id, instant) {
     Object.values(screens).forEach(s => {
       s.classList.remove('active');
-      gsap.set(s, { opacity: 0, x: 40, pointerEvents: 'none' });
+      gsap.set(s, { opacity: 0, x: 30, scale: 0.97, pointerEvents: 'none' });
     });
     const scr = screens[id];
     if (instant) {
-      gsap.set(scr, { opacity: 1, x: 0, pointerEvents: 'auto' });
+      gsap.set(scr, { opacity: 1, x: 0, scale: 1, pointerEvents: 'auto' });
     } else {
       gsap.fromTo(scr,
-        { opacity: 0, x: 40, scale: 0.98 },
-        { opacity: 1, x: 0, scale: 1, duration: 0.5, ease: springS, onStart: () => { scr.style.pointerEvents = 'auto'; } }
+        { opacity: 0, x: 30, scale: 0.97 },
+        { opacity: 1, x: 0, scale: 1, duration: 0.55, ease: iosSpring,
+          onStart: () => { scr.style.pointerEvents = 'auto'; } }
       );
     }
     scr.classList.add('active');
   }
 
-  // --- Cursor animation ---
+  // --- Cursor animation (iPadOS pointer with haptic-like feedback) ---
   function moveCursor(target, cb) {
     if (!target || !cursor) { cb?.(); return; }
     const sr = stage.getBoundingClientRect();
@@ -55,14 +58,36 @@
     const ty = tr.top - sr.top + tr.height * 0.5;
 
     const tl = gsap.timeline({ onComplete: cb });
-    tl.set(cursor, { left: tx + 50, top: ty + 50, opacity: 0 });
-    tl.to(cursor, { left: tx, top: ty, opacity: 1, duration: 0.5, ease: 'power2.out' });
-    tl.to(cursor, { scale: 0.8, duration: 0.06 });
-    tl.to(cursor, { scale: 1, duration: 0.15, ease: springS });
-    tl.to(target, { scale: 0.97, duration: 0.06 }, '-=0.21');
-    tl.to(target, { scale: 1, duration: 0.3, ease: spring }, '-=0.15');
-    tl.to(cursor, { opacity: 0, duration: 0.2 }, '+=0.1');
+    // iPadOS pointer appears with drift
+    tl.set(cursor, { left: tx + 40, top: ty + 30, opacity: 0, scale: 0.7 });
+    tl.to(cursor, { left: tx, top: ty, opacity: 1, scale: 1, duration: 0.45, ease: smooth });
+    // iPadOS press effect — pointer shrinks, target dips
+    tl.to(cursor, { scale: 0.75, duration: 0.08, ease: 'power2.in' });
+    tl.to(cursor, { scale: 1, duration: 0.25, ease: iosSpring });
+    tl.to(target, { scale: 0.97, duration: 0.08, ease: 'power2.in' }, '-=0.33');
+    tl.to(target, { scale: 1, duration: 0.35, ease: iosSpring }, '-=0.25');
+    // Pointer fades
+    tl.to(cursor, { opacity: 0, scale: 0.9, duration: 0.2, ease: smooth }, '+=0.08');
     return tl;
+  }
+
+  // --- iPadOS-style progressive disclosure helpers ---
+  function staggerReveal(elements, opts = {}) {
+    const { delay = 0, stagger = 0.04, from = { y: 8, opacity: 0, scale: 0.97 } } = opts;
+    elements.forEach(el => gsap.set(el, from));
+    return gsap.to(elements, {
+      y: 0, opacity: 1, scale: 1,
+      duration: 0.4, stagger,
+      delay,
+      ease: iosSpring,
+    });
+  }
+
+  function pulseElement(el, scale = 1.02) {
+    return gsap.fromTo(el,
+      { scale: 1 },
+      { scale, duration: 0.12, yoyo: true, repeat: 1, ease: smooth }
+    );
   }
 
   // --- Reset helpers ---
@@ -134,6 +159,13 @@
     gsap.set('#p-panel-messages', { opacity: 1, scale: 1 });
     // Reset upload
     document.getElementById('p-uploaded-file')?.classList.add('hidden');
+    document.getElementById('p-dropped-file')?.classList.add('hidden');
+    const uploadProgress = document.getElementById('p-upload-progress');
+    if (uploadProgress) { uploadProgress.classList.add('hidden'); }
+    const uploadFill = document.getElementById('p-upload-fill');
+    if (uploadFill) { uploadFill.style.width = '0%'; }
+    const btnSendFile = document.getElementById('p-btn-send-file');
+    if (btnSendFile) { btnSendFile.style.display = ''; btnSendFile.disabled = false; }
     const uz = document.getElementById('p-upload-zone');
     if (uz) { uz.classList.remove('drag-over'); uz.style.display = ''; }
     // Reset lock & toast
@@ -170,7 +202,6 @@
     const panel = document.getElementById('p-res-panel');
     const title = document.getElementById('p-res-panel-title');
     const badge = document.getElementById('p-res-panel-badge');
-    const panels = document.getElementById('p-student-panels');
 
     // Set content
     title.textContent = config.title;
@@ -181,22 +212,17 @@
     screens.student.querySelectorAll('.sc-res-preview').forEach(p => p.classList.add('hidden'));
     document.getElementById(config.previewId)?.classList.remove('hidden');
 
-    // Slide panel in
+    // Slide panel in (overlays on top, no layout change)
     panel.classList.remove('hidden');
-    gsap.fromTo(panel, { x: '100%' }, { x: '0%', duration: 0.45, ease: springS, onStart: () => panel.classList.add('visible') });
-
-    // Shrink panels grid
-    if (panels) panels.classList.add('panel-open');
+    gsap.fromTo(panel, { x: '100%' }, { x: '0%', duration: 0.35, ease: smooth, onStart: () => panel.classList.add('visible') });
   }
 
   function closeResPanel() {
     const panel = document.getElementById('p-res-panel');
-    const panels = document.getElementById('p-student-panels');
-    gsap.to(panel, { x: '100%', duration: 0.3, ease: smooth, onComplete: () => {
+    gsap.to(panel, { x: '100%', duration: 0.25, ease: smooth, onComplete: () => {
       panel.classList.remove('visible');
       panel.classList.add('hidden');
     }});
-    if (panels) panels.classList.remove('panel-open');
   }
 
   function resetAll() {
@@ -229,12 +255,12 @@
     connectOrder.forEach((idx, i) => {
       tl.add(() => {
         const card = cards[idx];
-        gsap.to(card, { opacity: 1, scale: 1, y: 0, duration: 0.35, ease: springS });
+        gsap.to(card, { opacity: 1, scale: 1, y: 0, duration: 0.3, ease: smooth });
         card.classList.add('connected');
         connected++;
         connCount.textContent = connected;
         disconnCount.textContent = 24 - connected;
-      }, i * 0.12 + 0.3);
+      }, i * 0.1 + 0.3);
     });
 
     // Marius stays disconnected
@@ -309,8 +335,7 @@
     // Button activates
     tl.add(() => {
       screensBtn.classList.add('active-btn');
-      gsap.fromTo(screensBtn, { scale: 1 }, { scale: 1.12, duration: 0.15, yoyo: true, repeat: 1, ease: springS });
-    }, '+=0.15');
+    }, '+=0.12');
 
     // 5) Screen content REVEALS on each card — staggered wave
     tl.add(() => {
@@ -319,34 +344,31 @@
         if (content) {
           gsap.to(content, {
             opacity: 1, scale: 1,
-            duration: 0.4,
-            delay: i * 0.05,
-            ease: spring,
+            duration: 0.35,
+            delay: i * 0.04,
+            ease: smooth,
           });
         }
-        // Slight card pop
-        gsap.fromTo(c, { scale: 1 }, { scale: 1.03, duration: 0.2, delay: i * 0.05, yoyo: true, repeat: 1, ease: springS });
       });
-    }, '+=0.3');
+    }, '+=0.25');
 
     // 6) Add interaction borders on some cards
-    tl.add(() => {}, '+=0.8');
+    tl.add(() => {}, '+=0.6');
     const interactions = [
-      { idx: 3, cls: 'border-green' },  // Chloé — Terminé
-      { idx: 7, cls: 'border-green' },  // Inès R — Terminé
-      { idx: 4, cls: 'border-red' },    // Emma — Alerte
-      { idx: 9, cls: 'border-red' },    // Ravi — Alerte
-      { idx: 0, cls: 'border-blue' },   // Malik — Active
-      { idx: 8, cls: 'border-blue' },   // Salomé — Active
+      { idx: 3, cls: 'border-green' },
+      { idx: 7, cls: 'border-green' },
+      { idx: 4, cls: 'border-red' },
+      { idx: 9, cls: 'border-red' },
+      { idx: 0, cls: 'border-blue' },
+      { idx: 8, cls: 'border-blue' },
     ];
     interactions.forEach((item, i) => {
       tl.add(() => {
         const card = activeCards[item.idx];
         if (!card) return;
         card.classList.add(item.cls);
-        gsap.fromTo(card, { scale: 1 }, { scale: 1.05, duration: 0.15, yoyo: true, repeat: 1, ease: springS });
-      }, i > 0 ? '-=0.05' : '+=0.1');
-      tl.add(() => {}, '+=0.2');
+      }, i > 0 ? '-=0.02' : '+=0.1');
+      tl.add(() => {}, '+=0.15');
     });
 
     tl.add(() => {}, '+=1');
@@ -370,7 +392,7 @@
     const msgBadge = document.getElementById('p-msg-badge');
     tl.add(() => {
       msgBadge.textContent = '3';
-      gsap.fromTo(msgBadge, { scale: 0 }, { scale: 1, duration: 0.3, ease: spring });
+      gsap.fromTo(msgBadge, { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.25, ease: smooth });
     });
 
     // Cursor clicks "Messages reçus" tab
@@ -431,11 +453,10 @@
     // 2) Cursor clicks lock button
     tl.add(() => moveCursor(lockBtn, null));
 
-    // Lock button activates with red glow
+    // Lock button activates
     tl.add(() => {
       lockBtn.classList.add('active-btn');
-      gsap.fromTo(lockBtn, { scale: 1 }, { scale: 1.15, duration: 0.15, yoyo: true, repeat: 1, ease: springS });
-    }, '+=0.15');
+    }, '+=0.12');
 
     // 3) Screen thumbnails go dark one by one — wave from top-left
     tl.add(() => {
@@ -479,14 +500,14 @@
       });
     }, '+=0.3');
 
-    // 4) Lock feedback banner slides in from top
+    // 4) Lock feedback banner slides in
     const lockOverlay = document.getElementById('p-lock-overlay');
     tl.add(() => {
       lockOverlay.classList.remove('hidden');
-      gsap.fromTo(lockOverlay, { opacity: 0 }, { opacity: 1, duration: 0.4, ease: smooth });
+      gsap.fromTo(lockOverlay, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: smooth });
       gsap.fromTo(lockOverlay.querySelector('.sc-lock-banner'),
-        { scale: 0.85, y: -30 },
-        { scale: 1, y: 0, duration: 0.5, ease: spring }
+        { scale: 0.96, y: -15, opacity: 0 },
+        { scale: 1, y: 0, opacity: 1, duration: 0.35, ease: smooth }
       );
     }, '+=0.8');
 
@@ -543,7 +564,7 @@
     tl.add(() => {}, '+=1.5');
   }
 
-  // --- T5: Envoyer une ressource ---
+  // --- T5: Envoyer une ressource (with card feedback) ---
   function playT5() {
     resetAll();
     showScreen('active', true);
@@ -561,39 +582,66 @@
 
     tl.add(() => {
       sendBtn.classList.add('active-btn');
-    }, '+=0.2');
+    }, '+=0.15');
 
     // Show send overlay
     const overlay = document.getElementById('p-send-overlay');
     tl.add(() => {
       overlay.classList.remove('hidden');
-      gsap.fromTo(overlay, { opacity: 0 }, { opacity: 1, duration: 0.3 });
-      gsap.fromTo(overlay.querySelector('.sc-send-modal'), { scale: 0.9, y: 30 }, { scale: 1, y: 0, duration: 0.5, ease: spring });
-    }, '+=0.3');
+      gsap.fromTo(overlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
+      gsap.fromTo(overlay.querySelector('.sc-send-modal'),
+        { scale: 0.95, y: 20 },
+        { scale: 1, y: 0, duration: 0.35, ease: smooth }
+      );
+    }, '+=0.2');
 
     // Cursor clicks "Envoyer à la classe"
     const confirmBtn = document.getElementById('p-send-confirm');
-    tl.add(() => moveCursor(confirmBtn, null), '+=0.8');
+    tl.add(() => moveCursor(confirmBtn, null), '+=0.6');
 
     // Confirm action
     tl.add(() => {
-      gsap.to(confirmBtn, { scale: 0.95, duration: 0.06, yoyo: true, repeat: 1 });
-    }, '+=0.1');
+      gsap.to(confirmBtn, { scale: 0.96, duration: 0.06, yoyo: true, repeat: 1 });
+    }, '+=0.08');
 
-    // Checkmark appears
+    // Checkmark appears on file
     tl.add(() => {
       const check = document.getElementById('p-send-check');
       check.classList.remove('hidden');
-      gsap.fromTo(check, { scale: 0, rotation: -90 }, { scale: 1, rotation: 0, duration: 0.4, ease: spring });
-    }, '+=0.3');
+      gsap.fromTo(check, { scale: 0 }, { scale: 1, duration: 0.3, ease: smooth });
+    }, '+=0.2');
 
     // Close modal
     tl.add(() => {
-      gsap.to(overlay, { opacity: 0, duration: 0.3, onComplete: () => overlay.classList.add('hidden') });
+      gsap.to(overlay, { opacity: 0, duration: 0.25, ease: smooth, onComplete: () => overlay.classList.add('hidden') });
       sendBtn.classList.remove('active-btn');
-    }, '+=1');
+    }, '+=0.6');
 
-    tl.add(() => {}, '+=1');
+    // Feedback on student cards — staggered "received" indicator
+    tl.add(() => {
+      activeCards.forEach((card, i) => {
+        // Add a temporary received badge
+        const badge = document.createElement('div');
+        badge.className = 'sc-card-received';
+        badge.innerHTML = '<i class="ph-fill ph-check-circle" style="font-size:14px;color:#34c759"></i>';
+        card.appendChild(badge);
+        gsap.fromTo(badge,
+          { opacity: 0, scale: 0.5 },
+          { opacity: 1, scale: 1, duration: 0.25, delay: i * 0.03, ease: smooth }
+        );
+        // Subtle card flash
+        gsap.fromTo(card,
+          { boxShadow: '0 0 0 0 rgba(52,199,89,0)' },
+          { boxShadow: '0 0 0 2px rgba(52,199,89,.3)', duration: 0.2, delay: i * 0.03, yoyo: true, repeat: 1 }
+        );
+        // Remove badge after delay
+        setTimeout(() => {
+          gsap.to(badge, { opacity: 0, duration: 0.3, onComplete: () => badge.remove() });
+        }, 2000 + i * 30);
+      });
+    }, '+=0.3');
+
+    tl.add(() => {}, '+=2.5');
   }
 
   // --- S1: Rejoindre la séance ---
@@ -622,12 +670,12 @@
 
     // Panels appear with stagger
     const panels = screens.student.querySelectorAll('.sc-panel:not(.sc-confirm-panel)');
-    panels.forEach(p => gsap.set(p, { opacity: 0, y: 15, scale: 0.97 }));
+    panels.forEach(p => gsap.set(p, { opacity: 0, y: 8 }));
     tl.add(() => {
       panels.forEach((p, i) => {
-        gsap.to(p, { opacity: 1, y: 0, scale: 1, duration: 0.4, delay: i * 0.12, ease: springS });
+        gsap.to(p, { opacity: 1, y: 0, duration: 0.3, delay: i * 0.08, ease: smooth });
       });
-    }, '+=0.3');
+    }, '+=0.25');
 
     // Progress to 35%
     tl.to('#p-session-fill', { width: '35%', duration: 1.5, ease: smooth }, '+=0.5');
@@ -659,7 +707,6 @@
     tl.add(() => moveCursor(pdfRes, null));
     tl.add(() => {
       pdfRes.classList.add('highlight');
-      gsap.fromTo(pdfRes, { scale: 1 }, { scale: 1.03, duration: 0.2, yoyo: true, repeat: 1, ease: springS });
     }, '+=0.1');
 
     // Open PDF in side panel
@@ -684,7 +731,6 @@
     tl.add(() => moveCursor(wikiRes, null));
     tl.add(() => {
       wikiRes.classList.add('highlight');
-      gsap.fromTo(wikiRes, { scale: 1 }, { scale: 1.03, duration: 0.2, yoyo: true, repeat: 1, ease: springS });
     }, '+=0.1');
 
     tl.add(() => openResPanel('wiki'), '+=0.25');
@@ -708,7 +754,6 @@
     tl.add(() => moveCursor(pearlRes, null));
     tl.add(() => {
       pearlRes.classList.add('highlight');
-      gsap.fromTo(pearlRes, { scale: 1 }, { scale: 1.03, duration: 0.2, yoyo: true, repeat: 1, ease: springS });
     }, '+=0.1');
 
     tl.add(() => openResPanel('pearl'), '+=0.25');
@@ -745,24 +790,24 @@
     tl.add(() => moveCursor(sendBtn, null));
 
     // Button press
-    tl.to(sendBtn, { scale: 0.93, duration: 0.06 }, '+=0.05');
-    tl.to(sendBtn, { scale: 1, duration: 0.25, ease: spring });
+    tl.to(sendBtn, { scale: 0.96, duration: 0.06 }, '+=0.05');
+    tl.to(sendBtn, { scale: 1, duration: 0.2, ease: smooth });
 
     // Hide message panel, show confirmation
     const msgPanel = document.getElementById('p-panel-messages');
     const confirm = document.getElementById('p-confirm');
     tl.add(() => {
-      gsap.to(msgPanel, { opacity: 0, scale: 0.95, duration: 0.25, onComplete: () => { msgPanel.style.display = 'none'; } });
-    }, '+=0.2');
+      gsap.to(msgPanel, { opacity: 0, y: -4, duration: 0.2, ease: smooth, onComplete: () => { msgPanel.style.display = 'none'; } });
+    }, '+=0.15');
     tl.add(() => {
       confirm.classList.remove('hidden');
-      gsap.fromTo(confirm, { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.5, ease: spring });
+      gsap.fromTo(confirm, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.3, ease: smooth });
     }, '+=0.1');
 
     // Progress completes
     tl.to('#p-session-fill', { width: '100%', duration: 0.8, ease: smooth }, '-=0.2');
 
-    tl.add(() => {}, '+=1.5');
+    tl.add(() => {}, '+=1.2');
   }
 
   // --- S4: Poser une question ---
@@ -779,30 +824,30 @@
     const chip = screens.student.querySelector('[data-msg="question"]');
     tl.add(() => moveCursor(chip, null));
     tl.add(() => { chip.classList.add('selected'); }, '+=0.1');
-    tl.add(() => {}, '+=0.3');
+    tl.add(() => {}, '+=0.25');
 
     // Cursor clicks "Envoyer"
     const sendBtn = document.getElementById('p-btn-send');
     tl.add(() => moveCursor(sendBtn, null));
 
-    tl.to(sendBtn, { scale: 0.93, duration: 0.06 }, '+=0.05');
-    tl.to(sendBtn, { scale: 1, duration: 0.25, ease: spring });
+    tl.to(sendBtn, { scale: 0.96, duration: 0.06 }, '+=0.05');
+    tl.to(sendBtn, { scale: 1, duration: 0.2, ease: smooth });
 
     // Confirmation
     const msgPanel = document.getElementById('p-panel-messages');
     const confirm = document.getElementById('p-confirm');
     tl.add(() => {
-      gsap.to(msgPanel, { opacity: 0, scale: 0.95, duration: 0.25, onComplete: () => { msgPanel.style.display = 'none'; } });
-    }, '+=0.2');
+      gsap.to(msgPanel, { opacity: 0, y: -4, duration: 0.2, ease: smooth, onComplete: () => { msgPanel.style.display = 'none'; } });
+    }, '+=0.15');
     tl.add(() => {
       confirm.classList.remove('hidden');
-      gsap.fromTo(confirm, { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.5, ease: spring });
+      gsap.fromTo(confirm, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.3, ease: smooth });
     }, '+=0.1');
 
-    tl.add(() => {}, '+=1.5');
+    tl.add(() => {}, '+=1.2');
   }
 
-  // --- S5: Partager un document ---
+  // --- S5: Partager un document (drag → drop → send → progress → confirm) ---
   function playS5() {
     resetAll();
     showScreen('student', true);
@@ -812,29 +857,60 @@
     const tl = gsap.timeline({ delay: 0.5 });
     currentTL = tl;
 
-    // Cursor moves to upload zone
     const uploadZone = document.getElementById('p-upload-zone');
+    const droppedFile = document.getElementById('p-dropped-file');
+    const progressBar = document.getElementById('p-upload-progress');
+    const progressFill = document.getElementById('p-upload-fill');
+    const btnSendFile = document.getElementById('p-btn-send-file');
+    const uploaded = document.getElementById('p-uploaded-file');
+
+    // 1) Cursor drags file to upload zone
     tl.add(() => moveCursor(uploadZone, null));
 
-    // Drag-over effect
+    // 2) Drag-over visual feedback
     tl.add(() => {
       uploadZone.classList.add('drag-over');
-      gsap.fromTo(uploadZone, { scale: 1 }, { scale: 1.02, duration: 0.3, ease: springS });
-    }, '+=0.2');
+      gsap.to(uploadZone, { scale: 1.01, duration: 0.25, ease: smooth });
+    }, '+=0.15');
 
-    // "Drop" — file appears
+    // 3) File drops — upload zone hides, dropped file card appears
     tl.add(() => {
       uploadZone.classList.remove('drag-over');
-      uploadZone.style.display = 'none';
-      const uploaded = document.getElementById('p-uploaded-file');
+      gsap.to(uploadZone, { scale: 1, opacity: 0, duration: 0.2, ease: smooth, onComplete: () => { uploadZone.style.display = 'none'; } });
+    }, '+=0.4');
+    tl.add(() => {
+      droppedFile.classList.remove('hidden');
+      gsap.fromTo(droppedFile, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.3, ease: smooth });
+    }, '+=0.15');
+
+    // 4) Cursor clicks "Envoyer" button
+    tl.add(() => moveCursor(btnSendFile, null), '+=0.5');
+    tl.add(() => {
+      gsap.to(btnSendFile, { scale: 0.96, duration: 0.06, yoyo: true, repeat: 1 });
+    }, '+=0.08');
+
+    // 5) Progress bar appears and fills
+    tl.add(() => {
+      btnSendFile.style.display = 'none';
+      progressBar.classList.remove('hidden');
+    }, '+=0.15');
+    tl.to(progressFill, { width: '35%', duration: 0.4, ease: smooth }, '+=0.1');
+    tl.to(progressFill, { width: '70%', duration: 0.5, ease: smooth }, '+=0.15');
+    tl.to(progressFill, { width: '100%', duration: 0.3, ease: smooth }, '+=0.1');
+
+    // 6) Confirmation — dropped file hides, success card appears
+    tl.add(() => {
+      gsap.to(droppedFile, { opacity: 0, y: -4, duration: 0.2, ease: smooth, onComplete: () => droppedFile.classList.add('hidden') });
+    }, '+=0.3');
+    tl.add(() => {
       uploaded.classList.remove('hidden');
-      gsap.fromTo(uploaded, { opacity: 0, y: 10, scale: 0.95 }, { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: spring });
-    }, '+=0.5');
+      gsap.fromTo(uploaded, { opacity: 0, y: 6, scale: 0.98 }, { opacity: 1, y: 0, scale: 1, duration: 0.3, ease: smooth });
+    }, '+=0.15');
 
-    // Progress advances
-    tl.to('#p-session-fill', { width: '70%', duration: 0.8, ease: smooth }, '+=0.3');
+    // Progress session advances
+    tl.to('#p-session-fill', { width: '70%', duration: 0.6, ease: smooth }, '-=0.3');
 
-    tl.add(() => {}, '+=1.5');
+    tl.add(() => {}, '+=1.2');
   }
 
   // ============================================================
