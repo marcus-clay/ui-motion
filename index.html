@@ -433,6 +433,468 @@
     </div>
   </section>
 
+  <!-- ============================================================
+       Section 3: Animated 5-Click Teacher/Student Journey
+       ============================================================ -->
+  <section class="section section-journey" id="section-journey">
+    <div class="journey-wrapper">
+
+      <!-- Section Title -->
+      <div class="journey-intro">
+        <span class="journey-badge">Parcours interactif</span>
+        <h2 class="journey-title">5 interactions clés</h2>
+        <p class="journey-subtitle">Découvrez le parcours enseignant–élève à travers 5 micro-interactions animées suivant les Human Interface Guidelines d'Apple iPadOS.</p>
+      </div>
+
+      <!-- Step Progress Bar -->
+      <div class="journey-progress">
+        <div class="journey-progress-track">
+          <div class="journey-progress-fill"></div>
+        </div>
+        <div class="journey-steps-nav">
+          <button class="journey-step-dot active" data-step="1">
+            <span class="dot-ring"></span>
+            <span class="dot-label">Créer un cours</span>
+          </button>
+          <button class="journey-step-dot" data-step="2">
+            <span class="dot-ring"></span>
+            <span class="dot-label">Distribuer</span>
+          </button>
+          <button class="journey-step-dot" data-step="3">
+            <span class="dot-ring"></span>
+            <span class="dot-label">Recevoir</span>
+          </button>
+          <button class="journey-step-dot" data-step="4">
+            <span class="dot-ring"></span>
+            <span class="dot-label">Compléter</span>
+          </button>
+          <button class="journey-step-dot" data-step="5">
+            <span class="dot-ring"></span>
+            <span class="dot-label">Résultats</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Stage — two iPad viewports -->
+      <div class="journey-stage">
+
+        <!-- Enseignant iPad -->
+        <div class="journey-ipad journey-ipad-teacher" id="ipad-teacher">
+          <div class="journey-ipad-bezel">
+            <div class="journey-ipad-cam"></div>
+            <div class="journey-ipad-screen">
+
+              <!-- Role Badge -->
+              <div class="role-badge teacher-badge">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Enseignant
+              </div>
+
+              <!-- Step 1: Teacher Dashboard -->
+              <div class="journey-view" id="teacher-step1">
+                <div class="ipad-status-bar">
+                  <span>9:41</span>
+                  <div class="status-icons">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="12"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3a4.24 4.24 0 0 0-6 0zm-4-4l2 2a7 7 0 0 1 10 0l2-2c-3.87-3.87-10.13-3.87-14 0z"/></svg>
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="12"><rect x="17" y="4" width="5" height="16" rx="1"/><rect x="11" y="8" width="5" height="12" rx="1"/><rect x="5" y="12" width="5" height="8" rx="1"/></svg>
+                    <div class="battery-icon"><div class="battery-fill"></div></div>
+                  </div>
+                </div>
+                <div class="app-header-bar">
+                  <div class="app-title-row">
+                    <div class="app-icon-sqool">
+                      <svg viewBox="0 0 36 36" fill="none"><rect x="2" y="2" width="14" height="14" rx="3" fill="#f97316"/><rect x="20" y="2" width="14" height="14" rx="3" fill="#fb923c"/><rect x="2" y="20" width="14" height="14" rx="3" fill="#fb923c"/><rect x="20" y="20" width="14" height="14" rx="3" fill="#f97316"/></svg>
+                    </div>
+                    <div>
+                      <div class="app-name">SQOOL Classe</div>
+                      <div class="app-subtitle">Mes classes · 2024–2025</div>
+                    </div>
+                  </div>
+                  <div class="app-user-pill">
+                    <div class="app-user-avatar">ML</div>
+                    <span>Mme Laurent</span>
+                  </div>
+                </div>
+                <div class="teacher-classes">
+                  <div class="class-card clickable-zone" id="cz-create">
+                    <div class="class-card-icon blue-grad">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                    </div>
+                    <div class="class-card-info">
+                      <div class="class-card-title">Créer un exercice</div>
+                      <div class="class-card-sub">Nouveau contenu pour la classe</div>
+                    </div>
+                    <div class="click-ripple"></div>
+                    <div class="click-cursor">
+                      <svg viewBox="0 0 24 24" fill="#fff" stroke="#1e3a5f" stroke-width="1.5"><path d="M4 4l7.07 17 2.51-7.39L21 11.07z"/></svg>
+                    </div>
+                  </div>
+                  <div class="class-card">
+                    <div class="class-card-icon orange-grad">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                    </div>
+                    <div class="class-card-info">
+                      <div class="class-card-title">CM2 — Français</div>
+                      <div class="class-card-sub">28 élèves · 12 exercices</div>
+                    </div>
+                  </div>
+                  <div class="class-card">
+                    <div class="class-card-icon purple-grad">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    </div>
+                    <div class="class-card-info">
+                      <div class="class-card-title">CM2 — Maths</div>
+                      <div class="class-card-sub">28 élèves · 8 exercices</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Step 2: Create & Distribute -->
+              <div class="journey-view hidden" id="teacher-step2">
+                <div class="ipad-status-bar">
+                  <span>9:42</span>
+                  <div class="status-icons">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="12"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3a4.24 4.24 0 0 0-6 0zm-4-4l2 2a7 7 0 0 1 10 0l2-2c-3.87-3.87-10.13-3.87-14 0z"/></svg>
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="12"><rect x="17" y="4" width="5" height="16" rx="1"/><rect x="11" y="8" width="5" height="12" rx="1"/><rect x="5" y="12" width="5" height="8" rx="1"/></svg>
+                    <div class="battery-icon"><div class="battery-fill"></div></div>
+                  </div>
+                </div>
+                <div class="form-sheet">
+                  <div class="sheet-handle"></div>
+                  <h3 class="sheet-title">Nouvel exercice</h3>
+                  <div class="form-group">
+                    <label class="form-label">Titre</label>
+                    <div class="form-input filled">Conjugaison — Le passé composé</div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Classe</label>
+                    <div class="form-select-pill">
+                      <span class="pill-tag">CM2 — Français</span>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14"><path d="M6 9l6 6 6-6"/></svg>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Type</label>
+                    <div class="type-chips">
+                      <span class="chip active">QCM</span>
+                      <span class="chip">Rédaction</span>
+                      <span class="chip">Fichier</span>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Date limite</label>
+                    <div class="form-input">15 mars 2025 — 17h00</div>
+                  </div>
+                  <button class="btn-distribute clickable-zone" id="cz-distribute">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
+                    Distribuer à 28 élèves
+                    <div class="click-ripple"></div>
+                    <div class="click-cursor">
+                      <svg viewBox="0 0 24 24" fill="#fff" stroke="#1e3a5f" stroke-width="1.5"><path d="M4 4l7.07 17 2.51-7.39L21 11.07z"/></svg>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Step 5: Teacher Results -->
+              <div class="journey-view hidden" id="teacher-step5">
+                <div class="ipad-status-bar">
+                  <span>14:30</span>
+                  <div class="status-icons">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="12"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3a4.24 4.24 0 0 0-6 0zm-4-4l2 2a7 7 0 0 1 10 0l2-2c-3.87-3.87-10.13-3.87-14 0z"/></svg>
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="12"><rect x="17" y="4" width="5" height="16" rx="1"/><rect x="11" y="8" width="5" height="12" rx="1"/><rect x="5" y="12" width="5" height="8" rx="1"/></svg>
+                    <div class="battery-icon"><div class="battery-fill"></div></div>
+                  </div>
+                </div>
+                <div class="app-header-bar">
+                  <div class="app-title-row">
+                    <button class="back-btn">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+                    </button>
+                    <div>
+                      <div class="app-name">Résultats</div>
+                      <div class="app-subtitle">Conjugaison — Le passé composé</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="results-dashboard">
+                  <div class="results-hero">
+                    <div class="results-ring">
+                      <svg viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="42" fill="none" stroke="#e8eaf0" stroke-width="8"/>
+                        <circle class="results-ring-fill" cx="50" cy="50" r="42" fill="none" stroke="#34a872" stroke-width="8" stroke-linecap="round" stroke-dasharray="264" stroke-dashoffset="264" transform="rotate(-90 50 50)"/>
+                      </svg>
+                      <div class="results-ring-text">
+                        <span class="results-pct">0</span>%
+                      </div>
+                    </div>
+                    <div class="results-hero-info">
+                      <div class="results-hero-title">Taux de réussite</div>
+                      <div class="results-hero-sub">26/28 élèves ont rendu</div>
+                    </div>
+                  </div>
+                  <div class="results-grid">
+                    <div class="result-card green-accent">
+                      <div class="result-val">18</div>
+                      <div class="result-lbl">Réussi (≥ 70%)</div>
+                    </div>
+                    <div class="result-card orange-accent">
+                      <div class="result-val">6</div>
+                      <div class="result-lbl">En difficulté</div>
+                    </div>
+                    <div class="result-card red-accent">
+                      <div class="result-val">2</div>
+                      <div class="result-lbl">Non rendu</div>
+                    </div>
+                  </div>
+                  <div class="results-students">
+                    <div class="student-row clickable-zone" id="cz-feedback">
+                      <div class="student-avatar green-bg">EL</div>
+                      <div class="student-info">
+                        <div class="student-name">Emma Leclerc</div>
+                        <div class="student-score">Score: 95%</div>
+                      </div>
+                      <span class="score-badge good">Excellent</span>
+                      <div class="click-ripple"></div>
+                      <div class="click-cursor">
+                        <svg viewBox="0 0 24 24" fill="#fff" stroke="#1e3a5f" stroke-width="1.5"><path d="M4 4l7.07 17 2.51-7.39L21 11.07z"/></svg>
+                      </div>
+                    </div>
+                    <div class="student-row">
+                      <div class="student-avatar orange-bg">LD</div>
+                      <div class="student-info">
+                        <div class="student-name">Lucas Dupont</div>
+                        <div class="student-score">Score: 62%</div>
+                      </div>
+                      <span class="score-badge warn">À revoir</span>
+                    </div>
+                    <div class="student-row">
+                      <div class="student-avatar green-bg">SM</div>
+                      <div class="student-info">
+                        <div class="student-name">Sofia Martin</div>
+                        <div class="student-score">Score: 88%</div>
+                      </div>
+                      <span class="score-badge good">Très bien</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Connection animation zone -->
+        <div class="journey-bridge" id="journey-bridge">
+          <div class="bridge-particles">
+            <span class="bridge-dot"></span>
+            <span class="bridge-dot"></span>
+            <span class="bridge-dot"></span>
+            <span class="bridge-dot"></span>
+            <span class="bridge-dot"></span>
+          </div>
+          <div class="bridge-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg>
+          </div>
+        </div>
+
+        <!-- Élève iPad -->
+        <div class="journey-ipad journey-ipad-student" id="ipad-student">
+          <div class="journey-ipad-bezel">
+            <div class="journey-ipad-cam"></div>
+            <div class="journey-ipad-screen">
+
+              <!-- Role Badge -->
+              <div class="role-badge student-badge">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Élève
+              </div>
+
+              <!-- Step 3: Student Notification -->
+              <div class="journey-view" id="student-step3">
+                <div class="ipad-status-bar">
+                  <span>9:43</span>
+                  <div class="status-icons">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="12"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3a4.24 4.24 0 0 0-6 0zm-4-4l2 2a7 7 0 0 1 10 0l2-2c-3.87-3.87-10.13-3.87-14 0z"/></svg>
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="12"><rect x="17" y="4" width="5" height="16" rx="1"/><rect x="11" y="8" width="5" height="12" rx="1"/><rect x="5" y="12" width="5" height="8" rx="1"/></svg>
+                    <div class="battery-icon"><div class="battery-fill"></div></div>
+                  </div>
+                </div>
+                <div class="app-header-bar">
+                  <div class="app-title-row">
+                    <div class="app-icon-sqool">
+                      <svg viewBox="0 0 36 36" fill="none"><rect x="2" y="2" width="14" height="14" rx="3" fill="#f97316"/><rect x="20" y="2" width="14" height="14" rx="3" fill="#fb923c"/><rect x="2" y="20" width="14" height="14" rx="3" fill="#fb923c"/><rect x="20" y="20" width="14" height="14" rx="3" fill="#f97316"/></svg>
+                    </div>
+                    <div>
+                      <div class="app-name">SQOOL Classe</div>
+                      <div class="app-subtitle">Mes exercices</div>
+                    </div>
+                  </div>
+                  <div class="app-user-pill">
+                    <div class="app-user-avatar student-av">EL</div>
+                    <span>Emma L.</span>
+                  </div>
+                </div>
+                <!-- Notification banner -->
+                <div class="notif-banner" id="notif-banner">
+                  <div class="notif-icon-wrap">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                  </div>
+                  <div class="notif-text">
+                    <div class="notif-title">Nouvel exercice</div>
+                    <div class="notif-body">Conjugaison — Le passé composé · Mme Laurent</div>
+                  </div>
+                  <span class="notif-time">À l'instant</span>
+                </div>
+                <div class="student-exercises">
+                  <div class="exercise-card new clickable-zone" id="cz-open">
+                    <div class="exercise-new-badge">NOUVEAU</div>
+                    <div class="exercise-icon orange-grad">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    </div>
+                    <div class="exercise-info">
+                      <div class="exercise-title">Conjugaison — Le passé composé</div>
+                      <div class="exercise-meta">CM2 Français · QCM · 15 mars</div>
+                    </div>
+                    <svg class="exercise-chevron" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+                    <div class="click-ripple"></div>
+                    <div class="click-cursor">
+                      <svg viewBox="0 0 24 24" fill="#fff" stroke="#1e3a5f" stroke-width="1.5"><path d="M4 4l7.07 17 2.51-7.39L21 11.07z"/></svg>
+                    </div>
+                  </div>
+                  <div class="exercise-card">
+                    <div class="exercise-icon blue-grad-sm">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    </div>
+                    <div class="exercise-info">
+                      <div class="exercise-title">Fractions — Additions</div>
+                      <div class="exercise-meta">CM2 Maths · Rendu</div>
+                    </div>
+                    <span class="done-check">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="#34a872" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Step 4: Student Completing Exercise -->
+              <div class="journey-view hidden" id="student-step4">
+                <div class="ipad-status-bar">
+                  <span>10:15</span>
+                  <div class="status-icons">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="12"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3a4.24 4.24 0 0 0-6 0zm-4-4l2 2a7 7 0 0 1 10 0l2-2c-3.87-3.87-10.13-3.87-14 0z"/></svg>
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="12"><rect x="17" y="4" width="5" height="16" rx="1"/><rect x="11" y="8" width="5" height="12" rx="1"/><rect x="5" y="12" width="5" height="8" rx="1"/></svg>
+                    <div class="battery-icon"><div class="battery-fill"></div></div>
+                  </div>
+                </div>
+                <div class="app-header-bar">
+                  <div class="app-title-row">
+                    <button class="back-btn">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+                    </button>
+                    <div>
+                      <div class="app-name">Conjugaison</div>
+                      <div class="app-subtitle">Le passé composé · QCM</div>
+                    </div>
+                  </div>
+                  <div class="timer-pill">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span>23:45</span>
+                  </div>
+                </div>
+                <div class="quiz-content">
+                  <div class="quiz-progress-bar">
+                    <div class="quiz-progress-fill" style="width:80%"></div>
+                    <span class="quiz-progress-text">Question 4/5</span>
+                  </div>
+                  <div class="quiz-question">
+                    <p class="quiz-q-text">Complétez : « Hier, nous ______ au parc. »</p>
+                    <div class="quiz-options">
+                      <div class="quiz-option">avons allé</div>
+                      <div class="quiz-option selected correct">sommes allés</div>
+                      <div class="quiz-option">étions allé</div>
+                      <div class="quiz-option">avions allés</div>
+                    </div>
+                  </div>
+                  <button class="btn-submit clickable-zone" id="cz-submit">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Valider et rendre
+                    <div class="click-ripple"></div>
+                    <div class="click-cursor">
+                      <svg viewBox="0 0 24 24" fill="#fff" stroke="#1e3a5f" stroke-width="1.5"><path d="M4 4l7.07 17 2.51-7.39L21 11.07z"/></svg>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Step 5: Student Feedback -->
+              <div class="journey-view hidden" id="student-step5">
+                <div class="ipad-status-bar">
+                  <span>14:30</span>
+                  <div class="status-icons">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="12"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3a4.24 4.24 0 0 0-6 0zm-4-4l2 2a7 7 0 0 1 10 0l2-2c-3.87-3.87-10.13-3.87-14 0z"/></svg>
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="12"><rect x="17" y="4" width="5" height="16" rx="1"/><rect x="11" y="8" width="5" height="12" rx="1"/><rect x="5" y="12" width="5" height="8" rx="1"/></svg>
+                    <div class="battery-icon"><div class="battery-fill"></div></div>
+                  </div>
+                </div>
+                <div class="feedback-view">
+                  <div class="feedback-success-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#34a872" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-5"/></svg>
+                  </div>
+                  <h3 class="feedback-title">Excellent travail !</h3>
+                  <div class="feedback-score-ring">
+                    <svg viewBox="0 0 120 120">
+                      <circle cx="60" cy="60" r="52" fill="none" stroke="#e8eaf0" stroke-width="8"/>
+                      <circle class="feedback-ring-fill" cx="60" cy="60" r="52" fill="none" stroke="#34a872" stroke-width="8" stroke-linecap="round" stroke-dasharray="327" stroke-dashoffset="327" transform="rotate(-90 60 60)"/>
+                    </svg>
+                    <div class="feedback-score-text">
+                      <span class="feedback-pct">0</span><small>%</small>
+                    </div>
+                  </div>
+                  <div class="feedback-details">
+                    <div class="feedback-row">
+                      <span>Bonnes réponses</span>
+                      <strong>19/20</strong>
+                    </div>
+                    <div class="feedback-row">
+                      <span>Temps</span>
+                      <strong>23 min 45 s</strong>
+                    </div>
+                    <div class="feedback-row">
+                      <span>Classement</span>
+                      <strong>2ᵉ / 28</strong>
+                    </div>
+                  </div>
+                  <div class="teacher-comment">
+                    <div class="comment-avatar">ML</div>
+                    <div class="comment-bubble">
+                      <div class="comment-author">Mme Laurent</div>
+                      <p class="comment-text">Bravo Emma ! Excellente maîtrise du passé composé. Continue comme ça 👏</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Auto-play / Replay -->
+      <div class="journey-controls">
+        <button class="btn-replay" id="btn-replay">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+          Rejouer l'animation
+        </button>
+        <div class="step-counter">
+          <span id="current-step-num">1</span> / 5
+        </div>
+      </div>
+
+    </div>
+  </section>
+
   <!-- GSAP + ScrollTrigger -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
