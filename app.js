@@ -5,12 +5,42 @@
 (function () {
   'use strict';
 
+  // ============================================================
+  // Responsive Scaling — fit iPad frame to any viewport
+  // ============================================================
+  const IPAD_W = 1080;
+  const IPAD_H = 810;
+  const FRAME_PAD = 28 * 2; // padding on each side of frame
+  const FRAME_BORDER = 40; // extra for border-radius visual space
+
+  function scaleIPad() {
+    const frame = document.querySelector('.ipad-frame');
+    if (!frame) return;
+
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const pad = 40; // viewport margin
+
+    const totalW = IPAD_W + FRAME_BORDER;
+    const totalH = IPAD_H + FRAME_BORDER;
+
+    const scaleX = (vw - pad) / totalW;
+    const scaleY = (vh - pad) / totalH;
+    const s = Math.min(scaleX, scaleY, 1); // never scale above 1
+
+    frame.style.transform = `scale(${s})`;
+  }
+
+  scaleIPad();
+  window.addEventListener('resize', scaleIPad);
+
   // --- Master timeline ---
   const master = gsap.timeline({ defaults: { ease: 'power3.out' } });
 
   // 1. iPad frame entrance — subtle 3D rotation into place
+  // Wrap animation uses a container so it doesn't conflict with responsive scale
   master.fromTo(
-    '.ipad-frame',
+    '.ipad-container',
     { opacity: 0, scale: 0.88, rotateX: 8, rotateY: -4 },
     { opacity: 1, scale: 1, rotateX: 0, rotateY: 0, duration: 1.4, ease: 'power4.out' }
   );
@@ -83,7 +113,7 @@
   });
 
   // --- Looping subtle idle animation on iPad ---
-  gsap.to('.ipad-frame', {
+  gsap.to('.ipad-container', {
     rotateX: 1.5,
     rotateY: 1,
     duration: 4,
