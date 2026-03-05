@@ -16,6 +16,25 @@
   const iosSnap  = 'power2.inOut';
   const iosSpring = 'power3.out';
 
+  // Custom cubic-bezier(0.86, 0, 0.07, 1) — expo-style, fast attack + smooth settle
+  function cubicBezier(x1, y1, x2, y2) {
+    // Newton-Raphson solver for cubic bezier
+    return function(t) {
+      let x = t, i = 0;
+      for (; i < 8; i++) {
+        const cx = 3*x1*(1-x)*(1-x)*x + 3*x2*(1-x)*x*x + x*x*x - t;
+        const dx = 3*x1*(1-x)*(1-3*x) + 3*x2*x*(2-3*x) + 3*x*x;
+        if (Math.abs(cx) < 1e-6) break;
+        x -= cx / dx;
+      }
+      return 3*y1*(1-x)*(1-x)*x + 3*y2*(1-x)*x*x + x*x*x;
+    };
+  }
+  const cbEase = cubicBezier(0.86, 0, 0.07, 1);
+
+  // Scenario playback speed (< 1 = slower, 1 = normal)
+  const SCENARIO_SPEED = 0.6;
+
   // --- Screens (unified: single teacher screen + student screen + sessions) ---
   const screens = {
     sessions: document.getElementById('scr-sessions'),
@@ -57,9 +76,10 @@
   }
 
   // --- Cursor animation (iPadOS pointer) ---
+  const viewport = document.getElementById('proto-viewport');
   function moveCursor(target, cb) {
     if (!target || !cursor) { cb?.(); return; }
-    const sr = stage.getBoundingClientRect();
+    const sr = (viewport || stage).getBoundingClientRect();
     const tr = target.getBoundingClientRect();
     const tx = tr.left - sr.left + tr.width * 0.55;
     const ty = tr.top - sr.top + tr.height * 0.5;
@@ -91,12 +111,17 @@
     const cards = screens.teacher.querySelectorAll('.sc-ucard');
     cards.forEach(c => {
       c.classList.remove('connected', 'selected', 'locked', 'badge-active',
-        'border-blue', 'border-green', 'border-red', 'border-purple');
+        'border-blue', 'border-green', 'border-red', 'border-purple',
+        'has-interaction', 'interaction-question', 'interaction-done', 'interaction-help', 'interaction-understood');
       c.classList.add('connecting', 'no-screen');
       c.style.borderColor = ''; c.style.boxShadow = '';
       gsap.set(c, { opacity: 0, scale: 0.95, y: 5 });
       const badge = c.querySelector('.sc-interaction-badge');
       if (badge) { badge.className = 'sc-interaction-badge hidden'; badge.innerHTML = ''; }
+      const avatar = c.querySelector('.sc-ucard-avatar');
+      if (avatar) gsap.set(avatar, { clearProps: 'transform,opacity' });
+      const screenEl = c.querySelector('.sc-ucard-screen');
+      if (screenEl) gsap.set(screenEl, { clearProps: 'transform,opacity' });
       const recv = c.querySelector('.sc-ucard-received');
       if (recv) { recv.classList.add('hidden'); recv.textContent = 'Reçu'; recv.style.background = ''; }
       const status = c.querySelector('.sc-ucard-status');
@@ -128,14 +153,14 @@
     // Reset unified cards to active state (with screens visible)
     const ucards = screens.teacher.querySelectorAll('.sc-ucard');
     ucards.forEach(c => {
-      c.classList.remove('locked', 'selected', 'badge-active', 'connecting',
+      c.classList.remove('locked', 'selected', 'selectable', 'badge-active', 'connecting',
         'no-screen', 'border-blue', 'border-green', 'border-red', 'border-purple');
       c.style.borderColor = ''; c.style.boxShadow = '';
       gsap.set(c, { opacity: 1, y: 0, scale: 1 });
       const badge = c.querySelector('.sc-interaction-badge');
       if (badge) { badge.className = 'sc-interaction-badge hidden'; badge.innerHTML = ''; }
       const recv = c.querySelector('.sc-ucard-received');
-      if (recv) recv.classList.add('hidden');
+      if (recv) { recv.classList.add('hidden'); recv.innerHTML = ''; recv.style.background = ''; }
       const screenContent = c.querySelector('.sc-screen-content');
       const screenOff = c.querySelector('.sc-screen-off');
       if (screenContent) gsap.set(screenContent, { opacity: 1, scale: 1 });
@@ -160,10 +185,20 @@
 
     // Reset messages panel
     document.getElementById('p-messages-panel')?.classList.add('hidden');
+    document.getElementById('p-msg-badge')?.classList.add('hidden');
+
+    // Reset badge tooltip
+    document.getElementById('p-badge-tooltip')?.classList.add('hidden');
+
+    // Reset student viewer
+    const svViewer = document.getElementById('p-student-viewer');
+    if (svViewer) { svViewer.classList.add('hidden'); gsap.set(svViewer, { clearProps: 'opacity' }); }
+    document.getElementById('p-sv-locked-overlay')?.classList.add('hidden');
+    document.getElementById('p-sv-lock')?.classList.remove('locked');
 
     // Reset all overlays
     ['p-send-overlay','p-project-overlay','p-push-overlay','p-group-overlay',
-     'p-poll-overlay','p-reply-overlay','p-recap-overlay','p-scan-overlay'].forEach(id => {
+     'p-poll-overlay','p-reply-overlay','p-recap-overlay','p-scan-overlay','p-timer-overlay'].forEach(id => {
       document.getElementById(id)?.classList.add('hidden');
     });
     document.getElementById('p-send-check')?.classList.add('hidden');
@@ -177,7 +212,12 @@
     if (pollStatus) pollStatus.innerHTML = '<span class="sc-dot green"></span> 0/23 réponses';
 
     // Reset action panel buttons
-    screens.teacher.querySelectorAll('.sc-action-btn').forEach(b => b.classList.remove('active-btn'));
+    screens.teacher.querySelectorAll('.sc-action-btn').forEach(b => { b.classList.remove('active-btn'); b.classList.remove('sharing'); });
+
+    // Reset sharing bar & student projection banner
+    document.getElementById('p-sharing-bar')?.classList.add('hidden');
+    document.getElementById('p-student-projection-banner')?.classList.add('hidden');
+    document.querySelectorAll('.sc-project-source').forEach(s => s.classList.remove('selected'));
 
     // Reset group bar
     const groupBar = screens.teacher.querySelector('.sc-group-bar');
@@ -191,7 +231,12 @@
 
     // Reset timer
     const timerFill = document.getElementById('p-timer-fill');
-    if (timerFill) timerFill.style.width = '30%';
+    if (timerFill) { timerFill.style.width = '0%'; gsap.set(timerFill, { opacity: 1, background: 'linear-gradient(90deg, #007aff, #5ac8fa)' }); }
+    const timerDisplay = document.getElementById('p-timer-display');
+    if (timerDisplay) { timerDisplay.classList.add('hidden'); timerDisplay.className = 'sc-timer-display hidden'; }
+    const studentTimer = document.getElementById('p-student-timer');
+    if (studentTimer) studentTimer.classList.add('hidden');
+    document.querySelectorAll('.sc-timer-option').forEach(o => o.classList.remove('selected'));
 
     // Reset scan overlay state
     const scanDoc = document.getElementById('p-scan-doc');
@@ -207,14 +252,21 @@
     const scanActions = document.getElementById('p-scan-actions');
     if (scanActions) scanActions.classList.add('hidden');
 
-    // Reset recap drive indicator
+    // Reset recap state
     document.getElementById('p-recap-drive')?.classList.add('hidden');
-
-    // Reset project screen content
-    const projContent = document.getElementById('p-project-screen-content');
-    if (projContent) {
-      projContent.innerHTML = '<div class="sc-screen-h" style="font-size:14px;padding:16px">Écran de l\'enseignant</div><div class="sc-screen-line" style="margin:0 16px 8px;height:5px;border-radius:3px"></div><div class="sc-screen-line short" style="margin:0 16px;height:5px;border-radius:3px;width:40%"></div>';
-    }
+    document.getElementById('p-recap-disconnect-status')?.classList.add('hidden');
+    const disconnBtn = document.getElementById('p-recap-disconnect-btn');
+    if (disconnBtn) disconnBtn.classList.remove('active');
+    const shutBtn = document.getElementById('p-recap-shutdown-btn');
+    if (shutBtn) shutBtn.classList.remove('active');
+    const dlAll = document.getElementById('p-recap-dl-all');
+    if (dlAll) { dlAll.innerHTML = '<i class="ph ph-download-simple" style="font-size:14px"></i> Tout télécharger'; dlAll.style.color = ''; }
+    const relaunchBtn = document.getElementById('p-recap-relaunch');
+    if (relaunchBtn) { gsap.set(relaunchBtn, { clearProps: 'all' }); }
+    // Reset recap stat values
+    const recapStatVals = document.querySelectorAll('.sc-recap-stat-val');
+    const recapDefaults = [23, 18, 7, 4];
+    recapStatVals.forEach((s, i) => { if (recapDefaults[i] !== undefined) s.textContent = recapDefaults[i]; });
   }
 
   function resetStudentScreen() {
@@ -235,6 +287,7 @@
     document.getElementById('p-student-lock')?.classList.add('hidden');
     document.getElementById('p-toast')?.classList.add('hidden');
     screens.student.querySelectorAll('.sc-resource').forEach(r => r.classList.remove('highlight'));
+    screens.student.querySelectorAll('.sc-resource[data-res="new"]').forEach(r => r.remove());
     const fill = document.getElementById('p-session-fill');
     if (fill) fill.style.width = '0%';
     const resPanel = document.getElementById('p-res-panel');
@@ -279,6 +332,12 @@
   function resetAll() {
     if (currentTL) { currentTL.kill(); currentTL = null; }
     gsap.set(cursor, { opacity: 0 });
+    // Reset ellipse overlay
+    const ell = document.getElementById('ellipse-overlay');
+    if (ell) { ell.classList.add('hidden'); gsap.set(ell, { opacity: 0 }); }
+    // Reset nav controls
+    if (navPrev) navPrev.disabled = true;
+    if (navNext) navNext.disabled = true;
     resetPreScreen();
     resetActiveScreen();
     resetStudentScreen();
@@ -324,6 +383,12 @@
     const qrOverlay = document.getElementById('p-qr-overlay');
     const qrCount = document.getElementById('p-qr-count');
 
+    // Start with no-screen mode (avatar + name + status, no screen preview)
+    cards.forEach(c => {
+      c.classList.add('no-screen');
+      gsap.set(c, { opacity: 0, scale: 0.95 });
+    });
+
     // --- Step 1: Teacher clicks QR Code button ---
     const qrBtn = document.getElementById('p-btn-qr');
     tl.add(() => moveCursor(qrBtn, null));
@@ -332,13 +397,13 @@
       gsap.to(qrBtn, { scale: 1, duration: 0.15, delay: 0.06, ease: smooth });
     }, '+=0.15');
 
-    // Show QR overlay
+    // Show QR overlay (centered modal, quick fade+scale)
     tl.add(() => {
       qrOverlay.classList.remove('hidden');
-      gsap.fromTo(qrOverlay, { opacity: 0 }, { opacity: 1, duration: 0.35, ease: smooth });
-      gsap.fromTo(qrOverlay.querySelector('.sc-qr-code'), { scale: 0.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: iosSpring });
-    }, '+=0.2');
-    tl.add(() => {}, '+=0.8');
+      gsap.fromTo(qrOverlay, { opacity: 0 }, { opacity: 1, duration: 0.2, ease: smooth });
+      gsap.fromTo(qrOverlay.querySelector('.sc-qr-content'), { scale: 0.96, y: 8 }, { scale: 1, y: 0, duration: 0.25, ease: smooth });
+    }, '+=0.15');
+    tl.add(() => {}, '+=0.4');
 
     // --- Step 2: Students scan and join progressively ---
     // Cards appear behind the QR (visible on the grid underneath)
@@ -350,15 +415,14 @@
         const card = cards[idx];
         if (!card) return;
         card.classList.remove('connecting');
-        gsap.to(card, { opacity: 1, scale: 1, y: 0, duration: 0.3, ease: springS });
-        // Set status to "Connecté"
+        gsap.to(card, { opacity: 1, scale: 1, y: 0, duration: 0.2, ease: smooth });
         const status = card.querySelector('.sc-ucard-status');
         if (status) { status.textContent = 'Connecté'; status.className = 'sc-ucard-status connected-status'; }
         connected++;
         connCount.textContent = connected;
         disconnCount.textContent = 24 - connected;
         qrCount.textContent = connected;
-      }, i * 0.12 + 0.3);
+      }, i * 0.06 + 0.2);
     });
 
     // Marius stays disconnected
@@ -403,8 +467,9 @@
     const qrClose = document.getElementById('p-qr-close');
     tl.add(() => moveCursor(qrClose, null));
     tl.add(() => {
-      gsap.to(qrOverlay, { opacity: 0, duration: 0.3, ease: smooth, onComplete: () => qrOverlay.classList.add('hidden') });
-    }, '+=0.15');
+      gsap.to(qrOverlay.querySelector('.sc-qr-content'), { scale: 0.96, y: 8, duration: 0.15, ease: smooth });
+      gsap.to(qrOverlay, { opacity: 0, duration: 0.2, ease: smooth, onComplete: () => { qrOverlay.classList.add('hidden'); gsap.set(qrOverlay, { clearProps: 'all' }); } });
+    }, '+=0.12');
 
     tl.add(() => {}, '+=1');
   }
@@ -437,28 +502,26 @@
       toggle.classList.add('on');
     }, '+=0.2');
 
-    // 2) Cards animate to show interaction badges
-    tl.add(() => {}, '+=0.5');
-
-    // 3) Unified cards — show interaction badges appearing
     const ucards = screens.teacher.querySelectorAll('.sc-ucard');
-    ucards.forEach(c => gsap.set(c, { opacity: 0, y: 10, scale: 0.95 }));
-    tl.add(() => {
-      ucards.forEach((c, i) => {
-        gsap.to(c, { opacity: 1, y: 0, scale: 1, duration: 0.3, delay: i * 0.03, ease: springS });
-      });
-    });
-    tl.add(() => {}, '+=0.8');
+    tl.add(() => {}, '+=0.4');
 
-    // 4) Interaction badges appear on some students
+    // Badge type → left border interaction class mapping
+    const borderMap = {
+      'badge-done': 'interaction-done',
+      'badge-question': 'interaction-question',
+      'badge-help': 'interaction-help',
+      'badge-understood': 'interaction-understood'
+    };
+
+    // Interaction badges + colored left borders appear on some students
     const badgeData = [
-      { idx: 3, type: 'badge-done', icon: 'ph-fill ph-check-circle', text: '' },
-      { idx: 5, type: 'badge-question', icon: 'ph-fill ph-question', text: '' },
-      { idx: 7, type: 'badge-done', icon: 'ph-fill ph-check-circle', text: '' },
-      { idx: 9, type: 'badge-help', icon: 'ph-fill ph-hand-waving', text: '' },
-      { idx: 0, type: 'badge-understood', icon: 'ph-fill ph-thumbs-up', text: '' },
-      { idx: 11, type: 'badge-done', icon: 'ph-fill ph-check-circle', text: '' },
-      { idx: 4, type: 'badge-question', icon: 'ph-fill ph-question', text: '' },
+      { idx: 3, type: 'badge-done', icon: 'ph-fill ph-check-circle', msg: 'J\'ai terminé' },
+      { idx: 5, type: 'badge-question', icon: 'ph-fill ph-question', msg: 'J\'ai une question' },
+      { idx: 7, type: 'badge-done', icon: 'ph-fill ph-check-circle', msg: 'J\'ai terminé' },
+      { idx: 9, type: 'badge-help', icon: 'ph-fill ph-hand-waving', msg: 'Ralentir le rythme' },
+      { idx: 0, type: 'badge-understood', icon: 'ph-fill ph-thumbs-up', msg: 'J\'ai compris' },
+      { idx: 11, type: 'badge-done', icon: 'ph-fill ph-check-circle', msg: 'J\'ai terminé' },
+      { idx: 4, type: 'badge-question', icon: 'ph-fill ph-question', msg: 'J\'ai une question' },
     ];
 
     badgeData.forEach((bd, i) => {
@@ -469,7 +532,7 @@
         if (!badge) return;
         badge.className = 'sc-interaction-badge ' + bd.type;
         badge.innerHTML = '<i class="' + bd.icon + '" style="font-size:11px"></i>';
-        card.classList.add('badge-active');
+        card.classList.add('badge-active', 'has-interaction', borderMap[bd.type]);
         gsap.fromTo(badge,
           { scale: 0, opacity: 0 },
           { scale: 1, opacity: 1, duration: 0.25, ease: iosSpring }
@@ -477,7 +540,51 @@
       }, i * 0.3 + 0.2);
     });
 
-    tl.add(() => {}, '+=1.5');
+    tl.add(() => {}, '+=0.8');
+
+    // Cursor hovers over Chloé's card (idx 4) to reveal tooltip
+    const chloeCard = ucards[4];
+    const tooltip = document.getElementById('p-badge-tooltip');
+    const tooltipAvatar = document.getElementById('p-tooltip-avatar');
+    const tooltipName = document.getElementById('p-tooltip-name');
+    const tooltipTime = document.getElementById('p-tooltip-time');
+    const tooltipIcon = document.getElementById('p-tooltip-icon');
+    const tooltipText = document.getElementById('p-tooltip-text');
+    const tooltipMsg = document.getElementById('p-tooltip-msg');
+
+    tl.add(() => moveCursor(chloeCard, null));
+
+    tl.add(() => {
+      // Position tooltip next to Chloé's card
+      const cardRect = chloeCard.getBoundingClientRect();
+      const parentRect = chloeCard.closest('.proto-screen').getBoundingClientRect();
+      const top = cardRect.top - parentRect.top - 10;
+      const left = cardRect.right - parentRect.left + 8;
+
+      tooltipAvatar.textContent = 'CD';
+      tooltipAvatar.style.background = '#f43f5e';
+      tooltipName.textContent = 'Chloé DUPONT';
+      tooltipTime.textContent = 'il y a 2 min';
+      tooltipIcon.className = 'ph-fill ph-question';
+      tooltipIcon.style.fontSize = '14px';
+      tooltipText.textContent = 'J\'ai une question';
+      tooltipMsg.className = 'sc-badge-tooltip-msg msg-question';
+
+      tooltip.style.top = top + 'px';
+      tooltip.style.left = left + 'px';
+      tooltip.classList.remove('hidden');
+      gsap.fromTo(tooltip, { opacity: 0, scale: 0.95, y: 4 }, { opacity: 1, scale: 1, y: 0, duration: 0.2, ease: smooth });
+    }, '+=0.15');
+
+    // Hold
+    tl.add(() => {}, '+=2.5');
+
+    // Hide tooltip
+    tl.add(() => {
+      gsap.to(tooltip, { opacity: 0, duration: 0.15, ease: smooth, onComplete: () => tooltip.classList.add('hidden') });
+    });
+
+    tl.add(() => {}, '+=1');
   }
 
   // --- T3: Afficher l'activité sur les écrans (show interaction borders) ---
@@ -518,15 +625,13 @@
       ucards.forEach((card, i) => {
         setTimeout(() => {
           card.classList.remove('no-screen');
-          const screenContent = card.querySelector('.sc-screen-content');
-          if (screenContent) {
-            gsap.fromTo(screenContent, { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.35, ease: iosSpring });
-          }
+          const screenEl = card.querySelector('.sc-ucard-screen');
+          if (screenEl) gsap.fromTo(screenEl, { opacity: 0, scaleY: 0.8 }, { opacity: 1, scaleY: 1, duration: 0.25, ease: 'back.out(1.2)', clearProps: 'all' });
           const status = card.querySelector('.sc-ucard-status');
           if (status) { status.textContent = 'Actif'; status.className = 'sc-ucard-status active-status'; }
-        }, i * 40);
+        }, i * 25);
       });
-    }, '+=0.3');
+    }, '+=0.2');
 
     tl.add(() => {}, '+=2');
   }
@@ -536,8 +641,9 @@
     resetAll();
     setupActiveScreen();
 
-    const grid = document.getElementById('p-grid');
     const panel = document.getElementById('p-messages-panel');
+    const msgBtn = document.getElementById('p-btn-messages');
+    const msgBadge = document.getElementById('p-msg-badge');
 
     // Add some badges to unified cards
     const ucards = screens.teacher.querySelectorAll('.sc-ucard');
@@ -552,30 +658,30 @@
       }
     });
 
+    // Show badge on messages button
+    if (msgBadge) { msgBadge.classList.remove('hidden'); msgBadge.textContent = '3'; }
+
     const tl = gsap.timeline({ delay: 0.5 });
     currentTL = tl;
 
     tl.add(() => {}, '+=0.5');
 
-    // Cursor clicks a badge card to open messages
-    const targetCard = ucards[5];
-    tl.add(() => moveCursor(targetCard, null));
+    // Cursor clicks the messages button in header
+    tl.add(() => moveCursor(msgBtn, null));
 
-    // Show messages panel, dim grid
+    // Slide in messages panel with iPadOS spring
+    tl.add(() => { openMessagesPanel(); }, '+=0.2');
+
+    tl.add(() => {}, '+=2');
+
+    // Cursor moves to close button, then close panel
+    const closeBtn = document.getElementById('p-messages-close');
+    tl.add(() => moveCursor(closeBtn, null));
     tl.add(() => {
-      panel.classList.remove('hidden');
-      gsap.fromTo(panel, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: springS });
-      gsap.to(grid, { opacity: 0.3, duration: 0.2 });
-    }, '+=0.2');
+      closeMessagesPanel(() => { if (msgBadge) msgBadge.classList.add('hidden'); });
+    }, '+=0.15');
 
-    // Messages appear one by one
-    const msgs = panel.querySelectorAll('.sc-msg-row');
-    msgs.forEach((m, i) => {
-      gsap.set(m, { opacity: 0, x: -20 });
-      tl.to(m, { opacity: 1, x: 0, duration: 0.35, ease: springS }, `-=${i > 0 ? 0.15 : 0}`);
-    });
-
-    tl.add(() => {}, '+=1.5');
+    tl.add(() => {}, '+=1');
   }
 
   // --- T5: Verrouiller les écrans (no full overlay — teacher keeps control) ---
@@ -704,20 +810,74 @@
       shareDocBtn.classList.remove('active-btn');
     }, '+=0.6');
 
-    // Feedback on unified cards — show received badge on each card
+    // Feedback on unified cards — show doc badge on each card
     tl.add(() => {
-      ucards.forEach((card, i) => {
-        const recv = card.querySelector('.sc-ucard-received');
-        if (recv) {
-          recv.classList.remove('hidden');
-          gsap.fromTo(recv, { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.25, delay: i * 0.03, ease: smooth });
-          gsap.fromTo(card, { boxShadow: '0 0 0 0 rgba(52,199,89,0)' }, { boxShadow: '0 0 0 2px rgba(52,199,89,.3)', duration: 0.2, delay: i * 0.03, yoyo: true, repeat: 1 });
-          setTimeout(() => { gsap.to(recv, { opacity: 0, duration: 0.3, onComplete: () => recv.classList.add('hidden') }); }, 2000 + i * 30);
-        }
-      });
+      showReceivedBadge(ucards, 'pdf', 'Consignes.pdf');
     }, '+=0.3');
 
     tl.add(() => {}, '+=2.5');
+  }
+
+  // Helper: show received-doc badge on cards (bottom-right pastille)
+  function showReceivedBadge(cards, type, label) {
+    const iconMap = {
+      pdf: '<i class="ph ph-file-pdf" style="font-size:10px"></i>',
+      doc: '<i class="ph ph-file-doc" style="font-size:10px"></i>',
+      link: '<i class="ph ph-link" style="font-size:10px"></i>'
+    };
+    cards.forEach((card, i) => {
+      const recv = card.querySelector('.sc-ucard-received');
+      if (!recv) return;
+      recv.innerHTML = '<span class="recv-icon ' + type + '">' + (iconMap[type] || iconMap.pdf) + '</span>' + label;
+      recv.classList.remove('hidden');
+      gsap.fromTo(recv, { opacity: 0, scale: 0.8, y: 4 }, { opacity: 1, scale: 1, y: 0, duration: 0.2, delay: i * 0.025, ease: smooth });
+    });
+  }
+
+  // Helper: open messages panel with iPadOS spring slide-in
+  function openMessagesPanel() {
+    const panel = document.getElementById('p-messages-panel');
+    if (!panel) return;
+    panel.classList.remove('hidden');
+    gsap.fromTo(panel,
+      { x: '100%' },
+      { x: '0%', duration: 0.3, ease: 'back.out(1.4)' }
+    );
+  }
+
+  // Helper: close messages panel — shorter, snappy slide-out
+  function closeMessagesPanel(onDone) {
+    const panel = document.getElementById('p-messages-panel');
+    if (!panel) return;
+    gsap.to(panel,
+      { x: '105%', duration: 0.2, ease: 'power2.in',
+        onComplete: () => { panel.classList.add('hidden'); gsap.set(panel, { clearProps: 'transform' }); if (onDone) onDone(); }
+      }
+    );
+  }
+
+  // Helper: start projection mode (sharing bar + student banner + button state)
+  function startProjection(sourceLabel) {
+    const shareScreenBtn = document.getElementById('p-btn-share-screen');
+    const sharingBar = document.getElementById('p-sharing-bar');
+    const studentBanner = document.getElementById('p-student-projection-banner');
+    const label = document.getElementById('p-sharing-source-label');
+
+    if (shareScreenBtn) { shareScreenBtn.classList.add('sharing'); shareScreenBtn.querySelector('span').textContent = 'Projection…'; }
+    if (label) label.textContent = sourceLabel || 'Écran entier';
+    if (sharingBar) { sharingBar.classList.remove('hidden'); gsap.fromTo(sharingBar, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.3, ease: iosSpring }); }
+    if (studentBanner) { studentBanner.classList.remove('hidden'); gsap.fromTo(studentBanner, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: smooth }); }
+  }
+
+  // Helper: stop projection mode
+  function stopProjection() {
+    const shareScreenBtn = document.getElementById('p-btn-share-screen');
+    const sharingBar = document.getElementById('p-sharing-bar');
+    const studentBanner = document.getElementById('p-student-projection-banner');
+
+    if (sharingBar) gsap.to(sharingBar, { opacity: 0, y: 10, duration: 0.2, ease: smooth, onComplete: () => sharingBar.classList.add('hidden') });
+    if (studentBanner) gsap.to(studentBanner, { opacity: 0, duration: 0.2, ease: smooth, onComplete: () => studentBanner.classList.add('hidden') });
+    if (shareScreenBtn) { shareScreenBtn.classList.remove('sharing'); shareScreenBtn.querySelector('span').textContent = 'Projeter'; }
   }
 
   // --- T7: Projeter son écran ---
@@ -727,53 +887,50 @@
 
     const shareScreenBtn = document.getElementById('p-btn-share-screen');
     const overlay = document.getElementById('p-project-overlay');
+    const sharingBar = document.getElementById('p-sharing-bar');
+    const studentBanner = document.getElementById('p-student-projection-banner');
+    const sourceLabel = document.getElementById('p-sharing-source-label');
 
     const tl = gsap.timeline({ delay: 0.5 });
     currentTL = tl;
 
-    // Cursor clicks "Partager l'écran"
+    // 1. Cursor clicks "Projeter"
     tl.add(() => moveCursor(shareScreenBtn, null));
-    tl.add(() => { shareScreenBtn.classList.add('active-btn'); }, '+=0.15');
 
-    // Show projection overlay
+    // 2. Show source picker modal
     tl.add(() => {
       overlay.classList.remove('hidden');
-      gsap.fromTo(overlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
+      gsap.fromTo(overlay, { opacity: 0 }, { opacity: 1, duration: 0.2, ease: smooth });
       gsap.fromTo(overlay.querySelector('.sc-project-modal'),
-        { scale: 0.95, y: 20, opacity: 0 },
-        { scale: 1, y: 0, opacity: 1, duration: 0.4, ease: iosSpring }
+        { scale: 0.95, y: 10 },
+        { scale: 1, y: 0, duration: 0.3, ease: iosSpring }
       );
     }, '+=0.2');
 
-    // Animate the preview screen
+    tl.add(() => {}, '+=0.6');
+
+    // 3. Cursor selects "Écran entier"
+    const screenSource = overlay.querySelector('[data-source="screen"]');
+    tl.add(() => moveCursor(screenSource, null));
     tl.add(() => {
-      const preview = overlay.querySelector('.sc-project-preview');
-      if (preview) {
-        gsap.fromTo(preview,
-          { opacity: 0, scale: 0.95 },
-          { opacity: 1, scale: 1, duration: 0.3, delay: 0.1, ease: smooth }
-        );
-      }
-    }, '+=0.3');
+      screenSource.classList.add('selected');
+    }, '+=0.15');
 
-    // Status updates
+    tl.add(() => {}, '+=0.4');
+
+    // 4. Close modal, activate sharing mode
     tl.add(() => {
-      const status = overlay.querySelector('.sc-project-status');
-      if (status) {
-        gsap.fromTo(status, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: smooth });
-      }
-    }, '+=0.5');
+      gsap.to(overlay, { opacity: 0, duration: 0.2, ease: smooth, onComplete: () => overlay.classList.add('hidden') });
+      startProjection('Écran entier');
+    }, '+=0.2');
 
-    // Hold
-    tl.add(() => {}, '+=2');
+    // 5. Hold sharing state
+    tl.add(() => {}, '+=2.5');
 
-    // Stop projection
+    // 6. Cursor clicks "Arrêter la projection"
     const stopBtn = document.getElementById('p-btn-stop-project');
     tl.add(() => moveCursor(stopBtn, null));
-    tl.add(() => {
-      gsap.to(overlay, { opacity: 0, duration: 0.3, ease: smooth, onComplete: () => overlay.classList.add('hidden') });
-      shareScreenBtn.classList.remove('active-btn');
-    }, '+=0.15');
+    tl.add(() => { stopProjection(); }, '+=0.15');
 
     tl.add(() => {}, '+=1');
   }
@@ -1140,6 +1297,13 @@
       confirm.classList.remove('hidden');
       gsap.fromTo(confirm, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.3, ease: smooth });
     }, '+=0.1');
+    // Feedback disappears, message panel returns
+    tl.add(() => {
+      gsap.to(confirm, { opacity: 0, duration: 0.25, ease: smooth, onComplete: () => confirm.classList.add('hidden') });
+      msgPanel.style.display = '';
+      gsap.fromTo(msgPanel, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: smooth });
+      msgPanel.querySelectorAll('.sc-msg-chip').forEach(c => c.classList.remove('selected'));
+    }, '+=2');
 
     tl.to('#p-session-fill', { width: '100%', duration: 0.8, ease: smooth }, '-=0.2');
     tl.add(() => {}, '+=1.2');
@@ -1174,6 +1338,13 @@
       confirm.classList.remove('hidden');
       gsap.fromTo(confirm, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.3, ease: smooth });
     }, '+=0.1');
+    // Feedback disappears, message panel returns
+    tl.add(() => {
+      gsap.to(confirm, { opacity: 0, duration: 0.25, ease: smooth, onComplete: () => confirm.classList.add('hidden') });
+      msgPanel.style.display = '';
+      gsap.fromTo(msgPanel, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: smooth });
+      msgPanel.querySelectorAll('.sc-msg-chip').forEach(c => c.classList.remove('selected'));
+    }, '+=2');
 
     tl.add(() => {}, '+=1.2');
   }
@@ -1262,25 +1433,28 @@
     // Hold — notification visible
     tl.add(() => {}, '+=1.5');
 
-    // New resource appears in resource list with highlight
-    const resources = screens.student.querySelectorAll('.sc-resource');
-    const lastRes = resources[resources.length - 1];
+    // Insert new resource at top of resource list
+    const resList = document.getElementById('p-resource-list');
+    let newRes;
     tl.add(() => {
-      if (lastRes) {
-        lastRes.classList.add('highlight');
-        gsap.fromTo(lastRes,
-          { boxShadow: '0 0 0 0 rgba(0,122,255,0)' },
-          { boxShadow: '0 0 0 2px rgba(0,122,255,.25)', duration: 0.3, yoyo: true, repeat: 2, ease: smooth }
-        );
-      }
+      newRes = document.createElement('div');
+      newRes.className = 'sc-resource highlight';
+      newRes.setAttribute('data-res', 'new');
+      newRes.innerHTML = '<span class="sc-res-icon doc"><i class="ph ph-file-doc" style="font-size:14px"></i></span><span class="sc-res-name">Exercice_approfondissement.docx</span><span class="sc-res-badge-new">Nouveau</span><i class="ph ph-arrow-square-out sc-res-ext"></i>';
+      resList.insertBefore(newRes, resList.firstChild);
+      gsap.fromTo(newRes, { opacity: 0, y: -8, maxHeight: 0 }, { opacity: 1, y: 0, maxHeight: 60, duration: 0.4, ease: iosSpring });
+      gsap.fromTo(newRes,
+        { boxShadow: '0 0 0 0 rgba(0,122,255,0)' },
+        { boxShadow: '0 0 0 2px rgba(0,122,255,.25)', duration: 0.4, yoyo: true, repeat: 2, ease: smooth, delay: 0.3 }
+      );
     }, '+=0.3');
 
     // Toast fades
     tl.add(() => {
       gsap.to(toast, { y: -20, opacity: 0, duration: 0.3, ease: smooth, onComplete: () => toast.classList.add('hidden') });
-    }, '+=1.5');
+    }, '+=1.8');
 
-    tl.add(() => { lastRes?.classList.remove('highlight'); }, '+=0.5');
+    tl.add(() => { if (newRes) newRes.classList.remove('highlight'); }, '+=0.5');
     tl.add(() => {}, '+=0.5');
   }
 
@@ -1422,8 +1596,9 @@
     resetAll();
     setupActiveScreen();
 
-    const mgmtGrid = document.getElementById('p-grid');
     const panel = document.getElementById('p-messages-panel');
+    const msgBtn = document.getElementById('p-btn-messages');
+    const msgBadge = document.getElementById('p-msg-badge');
     const ucards = screens.teacher.querySelectorAll('.sc-ucard');
 
     // Show badge on Ravi's card
@@ -1436,26 +1611,16 @@
         raviCard.classList.add('badge-active');
       }
     }
+    if (msgBadge) { msgBadge.classList.remove('hidden'); msgBadge.textContent = '1'; }
 
     const tl = gsap.timeline({ delay: 0.5 });
     currentTL = tl;
 
-    // Cursor clicks Ravi's card
-    tl.add(() => moveCursor(raviCard, null));
+    // Cursor clicks messages button in header
+    tl.add(() => moveCursor(msgBtn, null));
 
-    // Show messages panel
-    tl.add(() => {
-      panel.classList.remove('hidden');
-      gsap.fromTo(panel, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: springS });
-      gsap.to(mgmtGrid, { opacity: 0.3, duration: 0.2 });
-    }, '+=0.2');
-
-    // Messages appear
-    const msgs = panel.querySelectorAll('.sc-msg-row');
-    msgs.forEach((m, i) => {
-      gsap.set(m, { opacity: 0, x: -20 });
-      tl.to(m, { opacity: 1, x: 0, duration: 0.35, ease: springS }, `-=${i > 0 ? 0.15 : 0}`);
-    });
+    // Slide in messages panel with iPadOS spring
+    tl.add(() => { openMessagesPanel(); }, '+=0.2');
 
     tl.add(() => {}, '+=0.5');
 
@@ -1500,11 +1665,10 @@
       }
     }, '+=0.3');
 
-    // Close messages panel
-    tl.add(() => {
-      panel.classList.add('hidden');
-      gsap.to(mgmtGrid, { opacity: 1, duration: 0.3 });
-    }, '+=1');
+    // Cursor moves to close button, then close panel
+    const closeBtn = document.getElementById('p-messages-close');
+    tl.add(() => moveCursor(closeBtn, null), '+=0.8');
+    tl.add(() => { closeMessagesPanel(); }, '+=0.15');
 
     tl.add(() => {}, '+=1');
   }
@@ -1544,18 +1708,25 @@
     tl.add(() => {
       grid.classList.add('hidden');
       spotlight.classList.remove('hidden');
-      // Clone selected cards into spotlight
+      // Clone selected cards into 2-column spotlight grid
       selectIndices.forEach(idx => {
         const clone = ucards[idx].cloneNode(true);
         clone.classList.remove('selected');
         clone.style.opacity = '0';
         spotCards.appendChild(clone);
       });
+      // Add placeholder 4th slot
+      const placeholder = document.createElement('div');
+      placeholder.className = 'sc-spotlight-placeholder';
+      placeholder.innerHTML = '<div class="sc-spotlight-placeholder-icon"><i class="ph ph-monitor" style="font-size:18px"></i></div><button class="sc-spotlight-placeholder-btn"><i class="ph ph-plus" style="font-size:12px"></i> Afficher un autre écran</button>';
+      spotCards.appendChild(placeholder);
+
       gsap.fromTo(spotlight, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: smooth });
       const spotClones = spotCards.querySelectorAll('.sc-ucard');
       spotClones.forEach((c, i) => {
-        gsap.fromTo(c, { opacity: 0, y: 20, scale: 0.95 }, { opacity: 1, y: 0, scale: 1, duration: 0.4, delay: i * 0.1, ease: iosSpring });
+        gsap.fromTo(c, { opacity: 0, y: 20, scale: 0.95 }, { opacity: 1, y: 0, scale: 1, duration: 0.3, delay: i * 0.08, ease: iosSpring });
       });
+      gsap.fromTo(placeholder, { opacity: 0 }, { opacity: 1, duration: 0.3, delay: 0.3, ease: smooth });
     }, '+=0.2');
 
     tl.add(() => {}, '+=1.5');
@@ -1563,31 +1734,14 @@
     // Project to video projector
     const shareScreenBtn = document.getElementById('p-btn-share-screen');
     tl.add(() => moveCursor(shareScreenBtn, null));
-    tl.add(() => { shareScreenBtn.classList.add('active-btn'); }, '+=0.12');
-
-    const projectOverlay = document.getElementById('p-project-overlay');
-    const projContent = document.getElementById('p-project-screen-content');
-    tl.add(() => {
-      // Set project content to show 3 mini screens
-      projContent.innerHTML = '<div style="display:flex;gap:8px;padding:12px;justify-content:center;align-items:center;flex:1">' +
-        selectIndices.map(idx => {
-          const name = ucards[idx].querySelector('.sc-ucard-name')?.textContent || '';
-          return '<div style="flex:1;background:#f1f5f9;border-radius:8px;padding:8px;text-align:center"><div style="font-size:10px;font-weight:700;color:#1e293b;margin-bottom:4px">' + name + '</div><div style="height:40px;background:#e2e8f0;border-radius:4px"></div></div>';
-        }).join('') + '</div>';
-      projectOverlay.classList.remove('hidden');
-      gsap.fromTo(projectOverlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
-      gsap.fromTo(projectOverlay.querySelector('.sc-project-modal'), { scale: 0.95, y: 20 }, { scale: 1, y: 0, duration: 0.4, ease: iosSpring });
-    }, '+=0.2');
+    tl.add(() => { startProjection('3 écrans élèves'); }, '+=0.15');
 
     tl.add(() => {}, '+=2.5');
 
     // Stop projection
     const stopBtn = document.getElementById('p-btn-stop-project');
     tl.add(() => moveCursor(stopBtn, null));
-    tl.add(() => {
-      gsap.to(projectOverlay, { opacity: 0, duration: 0.3, ease: smooth, onComplete: () => projectOverlay.classList.add('hidden') });
-      shareScreenBtn.classList.remove('active-btn');
-    }, '+=0.15');
+    tl.add(() => { stopProjection(); }, '+=0.15');
 
     // Return to grid
     const closeBtn = document.getElementById('p-spotlight-close');
@@ -1643,22 +1797,10 @@
     // Project
     const shareScreenBtn = document.getElementById('p-btn-share-screen');
     tl.add(() => moveCursor(shareScreenBtn, null));
-    tl.add(() => { shareScreenBtn.classList.add('active-btn'); }, '+=0.12');
-
-    const projectOverlay = document.getElementById('p-project-overlay');
-    const projContent = document.getElementById('p-project-screen-content');
-    tl.add(() => {
-      projContent.innerHTML = '<div style="padding:16px"><div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:8px">Devoir de Chloé DUPONT</div><div style="height:4px;background:rgba(0,0,0,.08);border-radius:2px;margin-bottom:6px"></div><div style="height:4px;background:rgba(0,0,0,.08);border-radius:2px;width:70%;margin-bottom:6px"></div><div style="height:4px;background:rgba(0,0,0,.08);border-radius:2px;margin-bottom:6px"></div><div style="height:4px;background:rgba(0,0,0,.06);border-radius:2px;width:50%"></div></div>';
-      projectOverlay.classList.remove('hidden');
-      gsap.fromTo(projectOverlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
-      gsap.fromTo(projectOverlay.querySelector('.sc-project-modal'), { scale: 0.95, y: 20 }, { scale: 1, y: 0, duration: 0.4, ease: iosSpring });
-    }, '+=0.2');
+    tl.add(() => { startProjection('Écran de Chloé'); }, '+=0.15');
     tl.add(() => {}, '+=1');
 
-    // Close projection, open annotation
-    tl.add(() => {
-      gsap.to(projectOverlay, { opacity: 0, duration: 0.2, ease: smooth, onComplete: () => projectOverlay.classList.add('hidden') });
-    });
+    // Open annotation (projection stays active);
 
     const annotOverlay = document.getElementById('p-annotation-overlay');
     const canvas = document.getElementById('p-annotation-canvas');
@@ -1810,17 +1952,10 @@
       scanBtn.classList.remove('active-btn');
     }, '+=0.3');
 
-    // Show received badges on all cards
+    // Show received doc badges on all cards
     const ucards = screens.teacher.querySelectorAll('.sc-ucard');
     tl.add(() => {
-      ucards.forEach((card, i) => {
-        const recv = card.querySelector('.sc-ucard-received');
-        if (recv) {
-          recv.classList.remove('hidden');
-          gsap.fromTo(recv, { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.25, delay: i * 0.025, ease: smooth });
-          setTimeout(() => gsap.to(recv, { opacity: 0, duration: 0.3, onComplete: () => recv.classList.add('hidden') }), 2000 + i * 20);
-        }
-      });
+      showReceivedBadge(ucards, 'doc', 'Corrigé.docx');
     }, '+=0.3');
 
     tl.add(() => {}, '+=2');
@@ -1842,12 +1977,12 @@
       gsap.to(quitBtn, { scale: 0.96, duration: 0.06, yoyo: true, repeat: 1 });
     }, '+=0.1');
 
-    // Show recap overlay
+    // Show full-screen recap overlay
     const recapOverlay = document.getElementById('p-recap-overlay');
     tl.add(() => {
       recapOverlay.classList.remove('hidden');
-      gsap.fromTo(recapOverlay, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: smooth });
-      gsap.fromTo(recapOverlay.querySelector('.sc-recap-modal'), { scale: 0.95, y: 20 }, { scale: 1, y: 0, duration: 0.4, ease: iosSpring });
+      gsap.fromTo(recapOverlay, { opacity: 0 }, { opacity: 1, duration: 0.4, ease: smooth });
+      gsap.fromTo(recapOverlay.querySelector('.sc-recap-fullscreen'), { scale: 0.97, y: 20 }, { scale: 1, y: 0, duration: 0.5, ease: iosSpring });
     }, '+=0.3');
 
     // Stats animate in
@@ -1860,6 +1995,34 @@
       }, i * 0.1 + 0.3);
     });
     tl.add(() => {}, '+=0.8');
+
+    // Click disconnect tablets
+    const disconnectBtn = document.getElementById('p-recap-disconnect-btn');
+    tl.add(() => moveCursor(disconnectBtn, null), '+=0.5');
+    tl.add(() => {
+      gsap.to(disconnectBtn, { scale: 0.96, duration: 0.06, yoyo: true, repeat: 1 });
+      disconnectBtn.classList.add('active');
+    }, '+=0.1');
+
+    // Show disconnect status
+    const disconnectStatus = document.getElementById('p-recap-disconnect-status');
+    const disconnectText = document.getElementById('p-recap-disconnect-text');
+    tl.add(() => {
+      disconnectStatus.classList.remove('hidden');
+      disconnectText.textContent = '24 tablettes déconnectées';
+      gsap.fromTo(disconnectStatus, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.35, ease: iosSpring });
+    }, '+=0.4');
+
+    // Click shutdown tablets
+    const shutdownBtn = document.getElementById('p-recap-shutdown-btn');
+    tl.add(() => moveCursor(shutdownBtn, null), '+=0.6');
+    tl.add(() => {
+      gsap.to(shutdownBtn, { scale: 0.96, duration: 0.06, yoyo: true, repeat: 1 });
+      shutdownBtn.classList.add('active');
+      disconnectText.textContent = '24 tablettes éteintes';
+      gsap.fromTo(disconnectStatus, { opacity: 0.5 }, { opacity: 1, duration: 0.3 });
+    }, '+=0.1');
+    tl.add(() => {}, '+=0.5');
 
     // Click download all
     const dlAllBtn = document.getElementById('p-recap-dl-all');
@@ -1877,16 +2040,17 @@
       gsap.fromTo(driveNotif, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4, ease: iosSpring });
     }, '+=0.8');
 
-    tl.add(() => {}, '+=2');
-
-    // Close
-    const closeBtn = document.getElementById('p-recap-close');
-    tl.add(() => moveCursor(closeBtn, null));
-    tl.add(() => {
-      gsap.to(recapOverlay, { opacity: 0, duration: 0.3, ease: smooth, onComplete: () => recapOverlay.classList.add('hidden') });
-    }, '+=0.15');
-
     tl.add(() => {}, '+=1');
+
+    // Click "Relancer cette séance" button
+    const relaunchBtn = document.getElementById('p-recap-relaunch');
+    tl.add(() => moveCursor(relaunchBtn, null), '+=0.5');
+    tl.add(() => {
+      gsap.to(relaunchBtn, { scale: 0.96, duration: 0.06, yoyo: true, repeat: 1 });
+      gsap.to(relaunchBtn, { background: 'rgba(0,122,255,.08)', color: '#007aff', borderColor: '#007aff', duration: 0.2 });
+    }, '+=0.1');
+
+    tl.add(() => {}, '+=1.5');
   }
 
   // ============================================================
@@ -1930,17 +2094,10 @@
       shareDocBtn.classList.remove('active-btn');
     }, '+=0.5');
 
-    // Show received on cards
+    // Show received doc badges on all cards
     const ucards = screens.teacher.querySelectorAll('.sc-ucard');
     tl.add(() => {
-      ucards.forEach((card, i) => {
-        const recv = card.querySelector('.sc-ucard-received');
-        if (recv) {
-          recv.classList.remove('hidden');
-          gsap.fromTo(recv, { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.25, delay: i * 0.02, ease: smooth });
-          setTimeout(() => gsap.to(recv, { opacity: 0, duration: 0.3, onComplete: () => recv.classList.add('hidden') }), 1500 + i * 20);
-        }
-      });
+      showReceivedBadge(ucards, 'pdf', 'Consignes.pdf');
     }, '+=0.3');
 
     tl.add(() => {}, '+=2');
@@ -1955,41 +2112,90 @@
     const tl = gsap.timeline({ delay: 0.5 });
     currentTL = tl;
 
+    const timerBtn = document.getElementById('p-btn-timer');
+    const timerOverlay = document.getElementById('p-timer-overlay');
+    const timerOptions = document.getElementById('p-timer-options');
+    const timerStart = document.getElementById('p-timer-start');
+    const timerDisplay = document.getElementById('p-timer-display');
+    const timerCountdown = document.getElementById('p-timer-countdown');
+    const studentTimer = document.getElementById('p-student-timer');
+    const studentCountdown = document.getElementById('p-student-countdown');
     const timerFill = document.getElementById('p-timer-fill');
 
-    // Timer starts filling (simulate time passing)
+    // Step 1: Click timer button
+    tl.add(() => moveCursor(timerBtn, null));
     tl.add(() => {
-      gsap.to(timerFill, { width: '30%', duration: 0.5, ease: smooth });
-    }, '+=0.3');
+      timerOverlay.classList.remove('hidden');
+      gsap.fromTo(timerOverlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
+      gsap.fromTo(timerOverlay.querySelector('.sc-timer-modal'), { scale: 0.95, y: 12 }, { scale: 1, y: 0, duration: 0.3, ease: iosSpring });
+    }, '+=0.2');
+
+    // Step 2: Select 5 minutes
+    const opt5 = timerOptions?.querySelector('[data-minutes="5"]');
+    tl.add(() => moveCursor(opt5, null), '+=0.6');
     tl.add(() => {
-      // Change timer color to indicate active timing
+      timerOptions.querySelectorAll('.sc-timer-option').forEach(o => o.classList.remove('selected'));
+      opt5.classList.add('selected');
+    }, '+=0.15');
+
+    // Step 3: Click start
+    tl.add(() => moveCursor(timerStart, null), '+=0.4');
+    tl.add(() => {
+      gsap.to(timerStart, { scale: 0.96, duration: 0.06, yoyo: true, repeat: 1 });
+    }, '+=0.1');
+
+    // Step 4: Close modal, show timer display + bar
+    tl.add(() => {
+      gsap.to(timerOverlay, { opacity: 0, duration: 0.2, ease: smooth, onComplete: () => {
+        timerOverlay.classList.add('hidden');
+        timerOptions.querySelectorAll('.sc-timer-option').forEach(o => o.classList.remove('selected'));
+      }});
+      // Show countdown in teacher subheader
+      timerDisplay.classList.remove('hidden');
+      timerDisplay.className = 'sc-timer-display';
+      timerCountdown.textContent = '05:00';
+      gsap.fromTo(timerDisplay, { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.3, ease: iosSpring });
+      // Start timer bar fill
+      gsap.to(timerFill, { width: '20%', duration: 0.5, ease: smooth });
       gsap.to(timerFill, { background: 'linear-gradient(90deg, #34c759, #5ac8fa)', duration: 0.3 });
     }, '+=0.2');
 
-    // Timer progresses
-    tl.to(timerFill, { width: '50%', duration: 1, ease: smooth }, '+=0.5');
-    tl.to(timerFill, { width: '70%', duration: 0.8, ease: smooth }, '+=0.3');
-    tl.to(timerFill, { width: '85%', duration: 0.6, ease: smooth }, '+=0.2');
+    // Step 5: Timer progresses (simulated countdown)
+    tl.add(() => { timerCountdown.textContent = '04:12'; }, '+=0.8');
+    tl.to(timerFill, { width: '40%', duration: 0.8, ease: smooth });
+    tl.add(() => { timerCountdown.textContent = '03:28'; }, '+=0.6');
+    tl.to(timerFill, { width: '55%', duration: 0.6, ease: smooth });
+    tl.add(() => { timerCountdown.textContent = '02:15'; }, '+=0.5');
+    tl.to(timerFill, { width: '70%', duration: 0.6, ease: smooth });
 
-    // Timer warning (changes to orange)
+    // Step 6: Warning phase (orange)
     tl.add(() => {
+      timerCountdown.textContent = '01:00';
+      timerDisplay.className = 'sc-timer-display warning';
       gsap.to(timerFill, { background: 'linear-gradient(90deg, #ff9500, #ffcc02)', duration: 0.3 });
-    }, '+=0.1');
-    tl.to(timerFill, { width: '95%', duration: 0.5, ease: smooth }, '+=0.3');
+    }, '+=0.3');
+    tl.to(timerFill, { width: '85%', duration: 0.5, ease: smooth });
+    tl.add(() => { timerCountdown.textContent = '00:30'; }, '+=0.3');
+    tl.to(timerFill, { width: '93%', duration: 0.4, ease: smooth });
 
-    // Timer complete (red)
+    // Step 7: Danger phase (red)
     tl.add(() => {
+      timerCountdown.textContent = '00:10';
+      timerDisplay.className = 'sc-timer-display danger';
       gsap.to(timerFill, { background: 'linear-gradient(90deg, #ff3b30, #ff6961)', duration: 0.3 });
-    });
-    tl.to(timerFill, { width: '100%', duration: 0.3, ease: smooth }, '+=0.2');
+    }, '+=0.2');
+    tl.to(timerFill, { width: '100%', duration: 0.4, ease: smooth });
 
-    // Pulse effect when done
+    // Step 8: Timer complete — pulse
     tl.add(() => {
+      timerCountdown.textContent = '00:00';
       gsap.to(timerFill, { opacity: 0.5, duration: 0.3, yoyo: true, repeat: 3, ease: smooth });
+      gsap.to(timerDisplay, { scale: 1.05, duration: 0.2, yoyo: true, repeat: 3, ease: smooth });
     }, '+=0.2');
 
     // Some students send "terminé"
     const ucards = screens.teacher.querySelectorAll('.sc-ucard');
+    tl.add(() => {}, '+=0.5');
     [4, 5, 22, 7].forEach((idx, i) => {
       tl.add(() => {
         const card = ucards[idx];
@@ -2008,7 +2214,7 @@
   }
 
   // ============================================================
-  // T18: Groupes aléatoires (auto-distribute students)
+  // T18: Groupes manuels (select cards → modal → create group)
   // ============================================================
   function playT18() {
     resetAll();
@@ -2018,59 +2224,123 @@
 
     const createGroupBtn = document.getElementById('p-btn-create-group');
     const groupOverlay = document.getElementById('p-group-overlay');
+    const groupBar = screens.teacher.querySelector('.sc-group-bar');
+    const addBtn = document.getElementById('p-btn-group-add');
+    const ucards = screens.teacher.querySelectorAll('.sc-ucard');
 
+    // Step 1: Click "Créer un groupe"
     tl.add(() => moveCursor(createGroupBtn, null), '+=0.3');
     tl.add(() => { createGroupBtn.classList.add('active-btn'); }, '+=0.15');
+
+    // Step 2: Cards become selectable (visual hint)
+    tl.add(() => {
+      ucards.forEach(c => c.classList.add('selectable'));
+    }, '+=0.3');
+
+    // Step 3: Select 4 student cards manually
+    const selectIndices = [0, 1, 2, 3];
+    selectIndices.forEach((idx, i) => {
+      tl.add(() => moveCursor(ucards[idx], null), '+=0.4');
+      tl.add(() => {
+        ucards[idx].classList.add('selected');
+        gsap.fromTo(ucards[idx], { scale: 0.97 }, { scale: 1, duration: 0.2, ease: iosSpring });
+      }, '+=0.1');
+    });
+
+    // Step 4: Open group modal with pre-selected students
+    tl.add(() => {
+      groupOverlay.classList.remove('hidden');
+      gsap.fromTo(groupOverlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
+      gsap.fromTo(groupOverlay.querySelector('.sc-group-modal'), { scale: 0.95, y: 20 }, { scale: 1, y: 0, duration: 0.35, ease: iosSpring });
+      // Pre-select matching chips
+      const chips = document.querySelectorAll('.sc-group-chip');
+      [0, 1, 2, 3].forEach(i => { if (chips[i]) chips[i].classList.add('selected'); });
+    }, '+=0.4');
+
+    tl.add(() => {}, '+=0.8');
+
+    // Step 5: Click confirm
+    const confirmBtn = document.getElementById('p-group-confirm');
+    tl.add(() => moveCursor(confirmBtn, null));
+    tl.add(() => {
+      gsap.to(confirmBtn, { scale: 0.96, duration: 0.06, yoyo: true, repeat: 1 });
+    }, '+=0.1');
+
+    // Step 6: Close modal, create group pill, color cards
+    tl.add(() => {
+      gsap.to(groupOverlay, { opacity: 0, duration: 0.2, ease: smooth, onComplete: () => {
+        groupOverlay.classList.add('hidden');
+        document.querySelectorAll('.sc-group-chip').forEach(c => c.classList.remove('selected'));
+      }});
+      createGroupBtn.classList.remove('active-btn');
+      ucards.forEach(c => c.classList.remove('selectable', 'selected'));
+
+      // Add group pill
+      const pill = document.createElement('button');
+      pill.className = 'sc-group-pill';
+      pill.textContent = 'Groupe A';
+      pill.style.borderColor = '#3b82f6';
+      pill.style.color = '#3b82f6';
+      groupBar.insertBefore(pill, addBtn);
+      gsap.fromTo(pill, { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.3, ease: iosSpring });
+
+      // Color selected cards
+      selectIndices.forEach(i => {
+        if (ucards[i]) {
+          ucards[i].style.borderColor = '#3b82f6';
+          ucards[i].style.boxShadow = '0 0 0 1.5px rgba(59,130,246,.2)';
+        }
+      });
+    }, '+=0.2');
+
+    tl.add(() => {}, '+=1');
+
+    // Step 7: Repeat for second group
+    tl.add(() => moveCursor(addBtn, null));
+    tl.add(() => {
+      ucards.forEach(c => c.classList.add('selectable'));
+    }, '+=0.2');
+
+    const selectIndices2 = [4, 5, 6, 7];
+    selectIndices2.forEach((idx, i) => {
+      tl.add(() => moveCursor(ucards[idx], null), '+=0.3');
+      tl.add(() => {
+        ucards[idx].classList.add('selected');
+        gsap.fromTo(ucards[idx], { scale: 0.97 }, { scale: 1, duration: 0.2, ease: iosSpring });
+      }, '+=0.1');
+    });
 
     tl.add(() => {
       groupOverlay.classList.remove('hidden');
       gsap.fromTo(groupOverlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
       gsap.fromTo(groupOverlay.querySelector('.sc-group-modal'), { scale: 0.95, y: 20 }, { scale: 1, y: 0, duration: 0.35, ease: iosSpring });
-    }, '+=0.2');
+      const chips = document.querySelectorAll('.sc-group-chip');
+      [4, 5, 6, 7].forEach(i => { if (chips[i]) chips[i].classList.add('selected'); });
+    }, '+=0.3');
 
-    // Auto-select all chips in rapid sequence (random distribution)
-    const chips = document.querySelectorAll('.sc-group-chip');
-    const shuffled = [3, 8, 1, 11, 6, 0, 9, 4, 7, 2, 10, 5];
-    shuffled.forEach((idx, i) => {
-      tl.add(() => {
-        const chip = chips[idx];
-        if (chip) {
-          chip.classList.add('selected');
-          gsap.fromTo(chip, { scale: 0.9 }, { scale: 1, duration: 0.15, ease: smooth });
+    tl.add(() => moveCursor(confirmBtn, null), '+=0.6');
+    tl.add(() => {
+      gsap.to(groupOverlay, { opacity: 0, duration: 0.2, ease: smooth, onComplete: () => {
+        groupOverlay.classList.add('hidden');
+        document.querySelectorAll('.sc-group-chip').forEach(c => c.classList.remove('selected'));
+      }});
+      ucards.forEach(c => c.classList.remove('selectable', 'selected'));
+
+      const pill2 = document.createElement('button');
+      pill2.className = 'sc-group-pill';
+      pill2.textContent = 'Groupe B';
+      pill2.style.borderColor = '#34c759';
+      pill2.style.color = '#34c759';
+      groupBar.insertBefore(pill2, addBtn);
+      gsap.fromTo(pill2, { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.3, ease: iosSpring });
+
+      selectIndices2.forEach(i => {
+        if (ucards[i]) {
+          ucards[i].style.borderColor = '#34c759';
+          ucards[i].style.boxShadow = '0 0 0 1.5px rgba(52,199,89,.2)';
         }
-      }, i * 0.06 + 0.3);
-    });
-
-    // Create 3 groups in quick succession
-    const groupBar = screens.teacher.querySelector('.sc-group-bar');
-    const addBtn = document.getElementById('p-btn-group-add');
-
-    tl.add(() => {
-      gsap.to(groupOverlay, { opacity: 0, duration: 0.2, ease: smooth, onComplete: () => groupOverlay.classList.add('hidden') });
-      createGroupBtn.classList.remove('active-btn');
-    }, '+=0.4');
-
-    const groupNames = ['Groupe A', 'Groupe B', 'Groupe C'];
-    const groupColors = ['#3b82f6', '#34c759', '#f97316'];
-    groupNames.forEach((name, i) => {
-      tl.add(() => {
-        const pill = document.createElement('button');
-        pill.className = 'sc-group-pill';
-        pill.textContent = name;
-        pill.style.borderColor = groupColors[i];
-        pill.style.color = groupColors[i];
-        groupBar.insertBefore(pill, addBtn);
-        gsap.fromTo(pill, { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.3, ease: iosSpring });
-      }, i * 0.2 + 0.3);
-    });
-
-    // Highlight cards by group
-    const ucards = screens.teacher.querySelectorAll('.sc-ucard');
-    tl.add(() => {
-      [0,1,2,3].forEach(i => ucards[i]?.classList.add('border-blue'));
-      [4,5,6,7].forEach(i => ucards[i]?.classList.add('border-green'));
-      [8,9,10,11].forEach(i => { if (ucards[i]) { ucards[i].style.borderColor = '#f97316'; ucards[i].style.boxShadow = '0 0 0 1px rgba(249,115,22,.15)'; } });
-    }, '+=0.5');
+      });
+    }, '+=0.15');
 
     tl.add(() => {}, '+=2');
   }
@@ -2255,19 +2525,12 @@
     // Show feedback: assignment distributed to all cards
     const ucards = screens.teacher.querySelectorAll('.sc-ucard');
     tl.add(() => {
-      ucards.forEach((card, i) => {
+      ucards.forEach((card) => {
         card.classList.add('border-purple');
         card.style.borderColor = '#8b5cf6';
         card.style.boxShadow = '0 0 0 1px rgba(139,92,246,.15)';
-        const recv = card.querySelector('.sc-ucard-received');
-        if (recv) {
-          recv.classList.remove('hidden');
-          recv.textContent = 'DEVOIR';
-          recv.style.background = '#8b5cf6';
-          gsap.fromTo(recv, { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.25, delay: i * 0.025, ease: smooth });
-          setTimeout(() => gsap.to(recv, { opacity: 0, duration: 0.3, onComplete: () => { recv.classList.add('hidden'); recv.textContent = 'Reçu'; recv.style.background = ''; } }), 2000 + i * 20);
-        }
       });
+      showReceivedBadge(ucards, 'doc', 'Devoir.docx');
     }, '+=0.4');
 
     // Timer bar starts (simulates assignment timer)
@@ -2600,20 +2863,216 @@
     tl.add(() => {}, '+=1.5');
   }
 
+  // --- T25: Voir l'écran d'un élève (carousel) ---
+  // TEST: using cbEase (cubic-bezier 0.86,0,0.07,1) for all motion transitions
+  function playT25() {
+    resetAll();
+    setupActiveScreen();
+
+    const SLIDE_DUR = 0.7; // carousel slide duration — visible movement
+
+    const tl = gsap.timeline({ delay: 0.5 });
+    currentTL = tl;
+
+    const ucards = screens.teacher.querySelectorAll('.sc-ucard');
+    const viewer = document.getElementById('p-student-viewer');
+    const svAvatar = document.getElementById('p-sv-avatar');
+    const svName = document.getElementById('p-sv-name');
+    const svApp = document.getElementById('p-sv-app');
+    const slidePrev = document.getElementById('p-sv-slide-prev');
+    const slideCurrent = document.getElementById('p-sv-slide-current');
+    const slideNext = document.getElementById('p-sv-slide-next');
+    const svCounter = document.getElementById('p-sv-counter');
+    const svLockBtn = document.getElementById('p-sv-lock');
+    const svLockedOverlay = document.getElementById('p-sv-locked-overlay');
+    const svPrev = document.getElementById('p-sv-prev');
+    const svNext = document.getElementById('p-sv-next');
+    const svClose = document.getElementById('p-sv-close');
+
+    // Student data extracted from cards
+    const students = [];
+    ucards.forEach((card, i) => {
+      const name = card.querySelector('.sc-ucard-name')?.textContent || '';
+      const avatar = card.querySelector('.sc-ucard-avatar');
+      const initials = avatar?.textContent?.trim() || '';
+      const avatarBg = avatar?.style.background || '#64748b';
+      const appEl = card.querySelector('.sc-ucard-app');
+      const screenContent = card.querySelector('.sc-screen-content');
+      students.push({ index: i, name, initials, avatarBg, appHTML: appEl?.innerHTML || '', screenHTML: screenContent?.outerHTML || '' });
+    });
+
+    let currentIdx = 4; // Start with Chloé (index 4)
+
+    // Fill a slide element with student screen content
+    function fillSlide(slideEl, idx) {
+      if (idx < 0 || idx >= students.length) { slideEl.innerHTML = ''; return; }
+      slideEl.innerHTML = students[idx].screenHTML;
+    }
+
+    // Update header info for current student
+    function updateHeader(idx) {
+      const s = students[idx];
+      if (!s) return;
+      svAvatar.textContent = s.initials;
+      svAvatar.style.background = s.avatarBg;
+      svName.textContent = s.name;
+      svApp.innerHTML = s.appHTML;
+      svCounter.textContent = (idx + 1) + ' / ' + students.length;
+    }
+
+    // Set carousel to show idx (instant, no animation)
+    function setCarousel(idx) {
+      currentIdx = idx;
+      updateHeader(idx);
+      fillSlide(slidePrev, idx - 1);
+      fillSlide(slideCurrent, idx);
+      fillSlide(slideNext, idx + 1);
+      svLockBtn.classList.remove('locked');
+      svLockedOverlay.classList.add('hidden');
+    }
+
+    // Animate carousel to next/prev with visible sliding motion
+    function animateCarousel(direction) {
+      const newIdx = direction === 'next' ? currentIdx + 1 : currentIdx - 1;
+      if (newIdx < 0 || newIdx >= students.length) return;
+
+      // Animate header info change
+      updateHeader(newIdx);
+
+      if (direction === 'next') {
+        // Current → shrinks left, becomes prev; Next → grows center, becomes current
+        // Animate current slide: scale down + fade + move left
+        gsap.to(slideCurrent, { scale: 0.9, opacity: 0.4, x: '-30%', duration: SLIDE_DUR, ease: cbEase });
+        // Animate next slide: scale up + brighten + move to center
+        gsap.to(slideNext, { scale: 1, opacity: 1, x: '-30%', duration: SLIDE_DUR, ease: cbEase,
+          onComplete: () => {
+            // Reset positions instantly and update content
+            currentIdx = newIdx;
+            gsap.set([slidePrev, slideCurrent, slideNext], { clearProps: 'transform,opacity,x' });
+            fillSlide(slidePrev, currentIdx - 1);
+            fillSlide(slideCurrent, currentIdx);
+            fillSlide(slideNext, currentIdx + 1);
+          }
+        });
+        // Fade out prev (it scrolls away)
+        gsap.to(slidePrev, { opacity: 0, x: '-40%', duration: SLIDE_DUR, ease: cbEase });
+      } else {
+        // Prev → grows center; Current → shrinks right
+        gsap.to(slideCurrent, { scale: 0.9, opacity: 0.4, x: '30%', duration: SLIDE_DUR, ease: cbEase });
+        gsap.to(slidePrev, { scale: 1, opacity: 1, x: '30%', duration: SLIDE_DUR, ease: cbEase,
+          onComplete: () => {
+            currentIdx = newIdx;
+            gsap.set([slidePrev, slideCurrent, slideNext], { clearProps: 'transform,opacity,x' });
+            fillSlide(slidePrev, currentIdx - 1);
+            fillSlide(slideCurrent, currentIdx);
+            fillSlide(slideNext, currentIdx + 1);
+          }
+        });
+        gsap.to(slideNext, { opacity: 0, x: '40%', duration: SLIDE_DUR, ease: cbEase });
+      }
+    }
+
+    // --- Step 1: Click on Chloé's card ---
+    const chloeCard = ucards[4];
+    tl.add(() => moveCursor(chloeCard, null));
+    tl.add(() => {
+      gsap.to(chloeCard, { scale: 0.97, duration: 0.06 });
+      gsap.to(chloeCard, { scale: 1, duration: 0.15, delay: 0.06 });
+    }, '+=0.15');
+
+    // --- Step 2: Open full-screen viewer ---
+    tl.add(() => {
+      viewer.classList.remove('hidden');
+      gsap.fromTo(viewer, { opacity: 0 }, { opacity: 1, duration: 0.5, ease: cbEase });
+      setCarousel(4);
+      // Scale-in the carousel
+      const carousel = viewer.querySelector('.sc-sv-carousel');
+      gsap.fromTo(carousel, { scale: 0.92, y: 12 }, { scale: 1, y: 0, duration: 0.5, ease: cbEase });
+    }, '+=0.15');
+    tl.add(() => {}, '+=1.2');
+
+    // --- Step 3: Navigate to next student ---
+    tl.add(() => moveCursor(svNext, null));
+    tl.add(() => {
+      gsap.to(svNext, { scale: 0.9, duration: 0.06 });
+      gsap.to(svNext, { scale: 1, duration: 0.15, delay: 0.06 });
+      animateCarousel('next');
+    }, '+=0.15');
+    tl.add(() => {}, '+=' + (SLIDE_DUR + 0.4));
+
+    // Navigate again
+    tl.add(() => {
+      gsap.to(svNext, { scale: 0.9, duration: 0.06 });
+      gsap.to(svNext, { scale: 1, duration: 0.15, delay: 0.06 });
+      animateCarousel('next');
+    }, '+=0.2');
+    tl.add(() => {}, '+=' + (SLIDE_DUR + 0.4));
+
+    // --- Step 4: Navigate back ---
+    tl.add(() => moveCursor(svPrev, null));
+    tl.add(() => {
+      gsap.to(svPrev, { scale: 0.9, duration: 0.06 });
+      gsap.to(svPrev, { scale: 1, duration: 0.15, delay: 0.06 });
+      animateCarousel('prev');
+    }, '+=0.15');
+    tl.add(() => {}, '+=' + (SLIDE_DUR + 0.4));
+
+    // --- Step 5: Lock student screen ---
+    tl.add(() => moveCursor(svLockBtn, null));
+    tl.add(() => {
+      gsap.to(svLockBtn, { scale: 0.9, duration: 0.06 });
+      gsap.to(svLockBtn, { scale: 1, duration: 0.15, delay: 0.06 });
+      svLockBtn.classList.add('locked');
+      svLockedOverlay.classList.remove('hidden');
+      gsap.fromTo(svLockedOverlay, { opacity: 0 }, { opacity: 1, duration: 0.5, ease: cbEase });
+    }, '+=0.15');
+    tl.add(() => {}, '+=1');
+
+    // --- Step 6: Unlock ---
+    tl.add(() => {
+      gsap.to(svLockBtn, { scale: 0.9, duration: 0.06 });
+      gsap.to(svLockBtn, { scale: 1, duration: 0.15, delay: 0.06 });
+      svLockBtn.classList.remove('locked');
+      gsap.to(svLockedOverlay, { opacity: 0, duration: 0.5, ease: cbEase, onComplete: () => svLockedOverlay.classList.add('hidden') });
+    }, '+=0.2');
+    tl.add(() => {}, '+=0.8');
+
+    // --- Step 7: Close viewer ---
+    tl.add(() => moveCursor(svClose, null));
+    tl.add(() => {
+      gsap.to(svClose, { scale: 0.9, duration: 0.06 });
+      gsap.to(svClose, { scale: 1, duration: 0.15, delay: 0.06 });
+      gsap.to(viewer, { opacity: 0, duration: 0.5, ease: cbEase, onComplete: () => { viewer.classList.add('hidden'); gsap.set(viewer, { clearProps: 'opacity' }); } });
+    }, '+=0.15');
+  }
+
   // ============================================================
   // SCENARIO NARRATION SYSTEM
   // ============================================================
 
   const narrationPanel = document.getElementById('sc-narration');
+  const narrationToggle = document.getElementById('sc-narration-toggle');
+  const narrationExpand = document.getElementById('sc-narration-expand');
+  const stepsBar = document.getElementById('proto-steps-bar');
+  const stepsWrapper = document.getElementById('proto-steps-wrapper');
+  const navPrev = document.getElementById('proto-nav-prev');
+  const navNext = document.getElementById('proto-nav-next');
+  const playPauseBtn = document.getElementById('proto-play-pause');
+  const playIcon = document.getElementById('proto-play-icon');
+  const infoBadge = document.getElementById('proto-info-badge');
+  let isPaused = false;
+  let narrationHasContent = false;
+  let scenarioSteps = [];
+  let scenarioStepCallbacks = [];
+  let currentStepIdx = -1;
+  let isManualNav = false;
 
   function showNarration(config) {
     if (!narrationPanel) return;
-    narrationPanel.classList.remove('hidden');
-    gsap.fromTo(narrationPanel,
-      { opacity: 0, x: 20 },
-      { opacity: 1, x: 0, duration: 0.4, ease: iosSpring }
-    );
+    narrationHasContent = true;
+    scenarioSteps = config.steps || [];
 
+    // Populate sidebar (context + characters + UX only)
     document.getElementById('sc-narration-label').textContent = config.label;
     document.getElementById('sc-narration-title').textContent = config.title;
     document.getElementById('sc-narration-situation').textContent = config.situation;
@@ -2630,34 +3089,75 @@
       '</div>'
     ).join('');
 
-    // Steps
-    const stepsEl = document.getElementById('sc-narration-steps');
-    stepsEl.innerHTML = config.steps.map((s, i) =>
-      '<div class="sc-narration-step" id="sc-step-' + i + '">' +
-        '<div class="sc-narration-step-num">' + (i + 1) + '</div>' +
-        '<div class="sc-narration-step-content">' +
-          '<span class="sc-narration-step-who ' + s.who + '">' + (s.who === 'teacher' ? 'Enseignant' : 'Élève') + '</span>' +
-          '<span class="sc-narration-step-action">' + s.action + '</span>' +
-          '<span class="sc-narration-step-detail">' + s.detail + '</span>' +
-        '</div>' +
-      '</div>'
-    ).join('');
+    // Horizontal step bar
+    if (stepsBar && scenarioSteps.length > 0) {
+      stepsBar.innerHTML = scenarioSteps.map((s, i) => {
+        const connector = i < scenarioSteps.length - 1 ? '<div class="proto-step-connector"></div>' : '';
+        return '<div class="proto-step" id="proto-step-' + i + '" data-step="' + i + '">' +
+          '<div class="proto-step-num">' + (i + 1) + '</div>' +
+          '<div class="proto-step-who ' + s.who + '">' + (s.who === 'teacher' ? 'Prof' : 'Élève') + '</div>' +
+          '<span class="proto-step-label">' + s.action + '</span>' +
+        '</div>' + connector;
+      }).join('');
+      if (stepsWrapper) stepsWrapper.classList.remove('hidden');
+
+      // Click handlers on steps
+      stepsBar.querySelectorAll('.proto-step').forEach(step => {
+        step.addEventListener('click', () => {
+          const idx = parseInt(step.dataset.step);
+          goToStep(idx);
+        });
+      });
+
+      // Reset play/pause state
+      isPaused = false;
+      updatePlayPauseUI();
+    } else {
+      if (stepsWrapper) stepsWrapper.classList.add('hidden');
+      if (stepsBar) stepsBar.innerHTML = '';
+    }
+
+    // Show sidebar
+    openNarrationSidebar();
+  }
+
+  function openNarrationSidebar() {
+    if (!narrationPanel) return;
+    narrationPanel.classList.remove('hidden', 'collapsed');
+  }
+
+  function collapseNarrationSidebar() {
+    if (!narrationPanel) return;
+    narrationPanel.classList.add('collapsed');
+    if (narrationExpand && narrationHasContent) narrationExpand.classList.remove('hidden');
   }
 
   function setNarrationStep(idx, uxText) {
-    if (!narrationPanel) return;
-    const steps = narrationPanel.querySelectorAll('.sc-narration-step');
-    steps.forEach((s, i) => {
-      s.classList.remove('active', 'done');
-      if (i < idx) s.classList.add('done');
-      if (i === idx) s.classList.add('active');
-    });
+    currentStepIdx = idx;
 
-    // Scroll step into view
-    const activeStep = document.getElementById('sc-step-' + idx);
-    if (activeStep) activeStep.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // Add label to current timeline for seek navigation
+    if (currentTL) {
+      currentTL.addLabel('step-' + idx);
+    }
 
-    // UX guideline
+    // Update horizontal step bar
+    if (stepsBar) {
+      const steps = stepsBar.querySelectorAll('.proto-step');
+      steps.forEach((s, i) => {
+        s.classList.remove('active', 'done');
+        if (i < idx) s.classList.add('done');
+        if (i === idx) s.classList.add('active');
+      });
+      // Scroll active step into view
+      const activeStep = document.getElementById('proto-step-' + idx);
+      if (activeStep) activeStep.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+
+    // Update nav arrows state
+    if (navPrev) navPrev.disabled = (idx <= 0 || scenarioSteps.length === 0);
+    if (navNext) navNext.disabled = (idx >= scenarioSteps.length - 1 || scenarioSteps.length === 0);
+
+    // UX guideline in sidebar
     const uxPanel = document.getElementById('sc-narration-ux');
     const uxTextEl = document.getElementById('sc-narration-ux-text');
     if (uxText) {
@@ -2669,11 +3169,162 @@
     }
   }
 
+  // Manual step navigation — pauses timeline, seeks to step position
+  function goToStep(idx) {
+    if (!currentTL || idx < 0 || idx >= scenarioSteps.length) return;
+    // Find the step label in the timeline
+    const label = 'step-' + idx;
+    if (currentTL.labels && currentTL.labels[label] !== undefined) {
+      currentTL.seek(label);
+      currentTL.play();
+    }
+  }
+
   function hideNarration() {
     if (!narrationPanel) return;
-    gsap.to(narrationPanel, { opacity: 0, x: 20, duration: 0.3, ease: smooth,
-      onComplete: () => narrationPanel.classList.add('hidden')
+    narrationHasContent = false;
+    narrationPanel.classList.add('hidden');
+    narrationPanel.classList.remove('collapsed');
+    if (narrationExpand) narrationExpand.classList.add('hidden');
+    if (stepsWrapper) stepsWrapper.classList.add('hidden');
+    if (stepsBar) stepsBar.innerHTML = '';
+    isPaused = false;
+    updatePlayPauseUI();
+    scenarioSteps = [];
+    scenarioStepCallbacks = [];
+    currentStepIdx = -1;
+  }
+
+  // Toggle button handlers
+  if (narrationToggle) {
+    narrationToggle.addEventListener('click', () => collapseNarrationSidebar());
+  }
+  if (narrationExpand) {
+    narrationExpand.addEventListener('click', () => openNarrationSidebar());
+  }
+
+  // Navigation arrow handlers
+  if (navPrev) {
+    navPrev.addEventListener('click', () => {
+      if (currentStepIdx > 0) goToStep(currentStepIdx - 1);
     });
+  }
+  if (navNext) {
+    navNext.addEventListener('click', () => {
+      if (currentStepIdx < scenarioSteps.length - 1) goToStep(currentStepIdx + 1);
+    });
+  }
+
+  // Play/Pause toggle
+  function updatePlayPauseUI() {
+    if (!playPauseBtn || !playIcon) return;
+    playIcon.className = isPaused ? 'ph ph-play' : 'ph ph-pause';
+    playPauseBtn.classList.toggle('paused', isPaused);
+    playPauseBtn.title = isPaused ? 'Reprendre' : 'Pause';
+  }
+
+  if (playPauseBtn) {
+    playPauseBtn.addEventListener('click', () => {
+      if (!currentTL) return;
+      isPaused = !isPaused;
+      if (isPaused) {
+        currentTL.pause();
+      } else {
+        currentTL.play();
+      }
+      updatePlayPauseUI();
+    });
+  }
+
+  // ============================================================
+  // NARRATIVE ELLIPSE SYSTEM (teacher ↔ student transitions)
+  // ============================================================
+  const ellipseOverlay = document.getElementById('ellipse-overlay');
+  const ellipseFromLabel = document.getElementById('ellipse-from-label');
+  const ellipseToLabel = document.getElementById('ellipse-to-label');
+  const ellipseFromIcon = document.getElementById('ellipse-from-icon');
+  const ellipseToIcon = document.getElementById('ellipse-to-icon');
+  const ellipseActionText = document.getElementById('ellipse-action-text');
+  const ellipseResultText = document.getElementById('ellipse-result-text');
+  const ellipsePulse = document.getElementById('ellipse-pulse');
+  const ellipseArrow = document.getElementById('ellipse-arrow');
+
+  /**
+   * Show a narrative ellipse: animated transition between teacher and student
+   * @param {object} config
+   * @param {string} config.direction - 'teacher-to-student' or 'student-to-teacher'
+   * @param {string} config.action - What the source is doing
+   * @param {string} config.result - What happens on the target
+   * @param {number} config.duration - Total display time in seconds (default 2.5)
+   * @param {function} config.onComplete - Callback when ellipse finishes
+   */
+  function showEllipse(config) {
+    if (!ellipseOverlay) return;
+    const { direction = 'teacher-to-student', action = '', result = '', duration = 2.5, onComplete } = config;
+
+    const isReverse = direction === 'student-to-teacher';
+    ellipseOverlay.classList.toggle('reverse', isReverse);
+
+    // Set labels
+    ellipseFromLabel.textContent = isReverse ? 'Élève' : 'Enseignant';
+    ellipseToLabel.textContent = isReverse ? 'Enseignant' : 'Tablettes';
+    ellipseFromIcon.innerHTML = isReverse
+      ? '<i class="ph ph-device-tablet"></i>'
+      : '<i class="ph ph-desktop"></i>';
+    ellipseToIcon.innerHTML = isReverse
+      ? '<i class="ph ph-desktop"></i>'
+      : '<i class="ph ph-device-tablet"></i>';
+    ellipseActionText.textContent = action;
+    ellipseResultText.textContent = result;
+
+    // Show overlay
+    ellipseOverlay.classList.remove('hidden');
+    const tl = gsap.timeline({
+      onComplete: () => {
+        gsap.to(ellipseOverlay, {
+          opacity: 0, duration: 0.3, ease: smooth,
+          onComplete: () => {
+            ellipseOverlay.classList.add('hidden');
+            gsap.set(ellipseOverlay, { opacity: 1 });
+            onComplete?.();
+          }
+        });
+      }
+    });
+
+    // Entrance: fade in overlay
+    tl.fromTo(ellipseOverlay, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: smooth });
+
+    // From device entrance
+    tl.fromTo('#ellipse-from', { opacity: 0, x: -30, scale: 0.9 },
+      { opacity: 1, x: 0, scale: 1, duration: 0.4, ease: iosSpring }, 0.1);
+
+    // Arrow draws in
+    tl.fromTo(ellipseArrow, { opacity: 0, scaleX: 0 },
+      { opacity: 1, scaleX: 1, duration: 0.4, ease: smooth, transformOrigin: 'left center' }, 0.3);
+
+    // Pulse travels across
+    tl.fromTo(ellipsePulse,
+      { left: '0%', opacity: 0, scale: 0 },
+      { left: '100%', opacity: 1, scale: 1, duration: 0.6, ease: 'power2.inOut' }, 0.4);
+
+    // To device entrance
+    tl.fromTo('#ellipse-to', { opacity: 0, x: 30, scale: 0.9 },
+      { opacity: 1, x: 0, scale: 1, duration: 0.4, ease: iosSpring }, 0.7);
+
+    // Hold
+    tl.add(() => {}, '+=' + Math.max(0, duration - 1.5));
+
+    return tl;
+  }
+
+  /**
+   * Helper: add an ellipse step to an existing GSAP timeline
+   * Returns the label position where the ellipse was inserted
+   */
+  function addEllipseToTimeline(tl, config, position) {
+    tl.add(() => showEllipse(config), position);
+    tl.add(() => {}, '+=' + (config.duration || 2.5));
   }
 
   // ============================================================
@@ -2716,10 +3367,10 @@
 
     tl.add(() => {
       qrOverlay.classList.remove('hidden');
-      gsap.fromTo(qrOverlay, { opacity: 0 }, { opacity: 1, duration: 0.35, ease: smooth });
-      gsap.fromTo(qrOverlay.querySelector('.sc-qr-code'), { scale: 0.8 }, { scale: 1, duration: 0.5, ease: iosSpring });
-    }, '+=0.3');
-    tl.add(() => {}, '+=0.8');
+      gsap.fromTo(qrOverlay, { opacity: 0 }, { opacity: 1, duration: 0.2, ease: smooth });
+      gsap.fromTo(qrOverlay.querySelector('.sc-qr-content'), { scale: 0.96, y: 8 }, { scale: 1, y: 0, duration: 0.25, ease: smooth });
+    }, '+=0.2');
+    tl.add(() => {}, '+=0.4');
 
     // --- Step 2: Students join progressively ---
     tl.add(() => setNarrationStep(1, 'Progressive disclosure : les cartes élèves apparaissent une par une au fur et à mesure des connexions. Le statut « Connecté » / « Absent » donne un feedback immédiat. Le rythme staggered crée un sentiment de classe vivante qui se remplit.'));
@@ -2731,14 +3382,14 @@
         const card = cards[idx];
         if (!card) return;
         card.classList.remove('connecting');
-        gsap.to(card, { opacity: 1, scale: 1, y: 0, duration: 0.3, ease: springS });
+        gsap.to(card, { opacity: 1, scale: 1, y: 0, duration: 0.2, ease: smooth });
         const status = card.querySelector('.sc-ucard-status');
         if (status) { status.textContent = 'Connecté'; status.className = 'sc-ucard-status connected-status'; }
         connected++;
         connCount.textContent = connected;
         disconnCount.textContent = 24 - connected;
         qrCount.textContent = connected;
-      }, i * 0.08 + 0.3);
+      }, i * 0.06 + 0.2);
     });
 
     // Marius late
@@ -2817,18 +3468,20 @@
       shareDocBtn.classList.remove('active-btn');
     }, '+=0.5');
 
-    // Received badges
+    // Received doc badges
     tl.add(() => {
-      cards.forEach((card, i) => {
-        const recv = card.querySelector('.sc-ucard-received');
-        if (recv) {
-          recv.classList.remove('hidden');
-          gsap.fromTo(recv, { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.25, delay: i * 0.025, ease: smooth });
-          setTimeout(() => gsap.to(recv, { opacity: 0, duration: 0.3, onComplete: () => recv.classList.add('hidden') }), 1800 + i * 20);
-        }
-      });
+      showReceivedBadge(cards, 'pdf', 'Cours_Egypte.pdf');
     }, '+=0.3');
     tl.add(() => {}, '+=1.5');
+
+    // --- Ellipse: Teacher → Student (resource sent) ---
+    tl.add(() => showEllipse({
+      direction: 'teacher-to-student',
+      action: 'Envoie le PDF du cours',
+      result: 'Chloé reçoit la notification sur sa tablette',
+      duration: 2.5
+    }));
+    tl.add(() => {}, '+=2.8');
 
     // --- Step 5: Student receives and opens resource ---
     tl.add(() => setNarrationStep(4, 'Panneau latéral glissant : la ressource s\'ouvre en superposition sans quitter la vue principale. L\'élève garde le contexte de sa séance. Le geste de retour (chevron) est cohérent avec les conventions iOS/iPadOS de navigation.'));
@@ -2926,6 +3579,15 @@
     }, '+=0.3');
     tl.add(() => {}, '+=1');
 
+    // --- Ellipse: Teacher → Student (lock) ---
+    tl.add(() => showEllipse({
+      direction: 'teacher-to-student',
+      action: 'Verrouille les écrans',
+      result: 'Les tablettes affichent le message de verrouillage',
+      duration: 2.2
+    }));
+    tl.add(() => {}, '+=2.5');
+
     // Step 4: Student sees lock
     tl.add(() => setNarrationStep(3, 'Feedback clair pour l\'élève : un écran verrouillé affiche un message explicite sans être punitif. Le ton neutre (« verrouillé par l\'enseignant ») contextualise la situation comme un acte pédagogique, pas une sanction.'));
     tl.add(() => showScreen('student'));
@@ -2945,22 +3607,17 @@
     tl.add(() => showScreen('active'), '+=0.3');
 
     const messagesPanel = document.getElementById('p-messages-panel');
-    tl.add(() => {
-      messagesPanel.classList.remove('hidden');
-      gsap.fromTo(messagesPanel, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: springS });
-    }, '+=0.3');
-
-    const msgs = messagesPanel.querySelectorAll('.sc-msg-row');
-    msgs.forEach((m, i) => {
-      gsap.set(m, { opacity: 0, x: -20 });
-      tl.to(m, { opacity: 1, x: 0, duration: 0.35, ease: springS }, `-=${i > 0 ? 0.15 : 0}`);
-    });
+    const msgBadgeS = document.getElementById('p-msg-badge');
+    if (msgBadgeS) { msgBadgeS.classList.remove('hidden'); msgBadgeS.textContent = '3'; }
+    const msgBtnS = document.getElementById('p-btn-messages');
+    tl.add(() => moveCursor(msgBtnS, null), '+=0.3');
+    tl.add(() => { openMessagesPanel(); }, '+=0.2');
     tl.add(() => {}, '+=1.5');
 
     // Step 6: Unlock
     tl.add(() => setNarrationStep(5, 'Réversibilité immédiate : le déverrouillage est aussi simple que le verrouillage — un seul clic sur le même bouton. Ce pattern symétrique réduit la charge cognitive et encourage l\'enseignant à utiliser le verrouillage comme un outil courant, pas une mesure exceptionnelle.'));
     tl.add(() => {
-      messagesPanel.classList.add('hidden');
+      closeMessagesPanel();
       lockBtn.classList.remove('active-btn');
     });
     tl.add(() => {}, '+=1');
@@ -3165,7 +3822,25 @@
       launchBtn.textContent = 'Sondage envoyé';
       launchBtn.style.background = '#34c759';
     }, '+=0.1');
-    tl.add(() => {}, '+=0.5');
+    tl.add(() => {}, '+=0.3');
+
+    // --- Ellipse: Teacher → Student (poll sent) ---
+    tl.add(() => showEllipse({
+      direction: 'teacher-to-student',
+      action: 'Envoie le sondage de compréhension',
+      result: 'Les élèves reçoivent le sondage et votent en temps réel',
+      duration: 2
+    }));
+    tl.add(() => {}, '+=2.3');
+
+    // --- Ellipse: Student → Teacher (responses) ---
+    tl.add(() => showEllipse({
+      direction: 'student-to-teacher',
+      action: '23 élèves répondent au sondage',
+      result: 'Les résultats s\'affichent en temps réel',
+      duration: 2
+    }));
+    tl.add(() => {}, '+=2.3');
 
     // Step 2: Watch results
     tl.add(() => setNarrationStep(1, 'Feedback en temps réel : les barres de progression s\'animent au fur et à mesure que les réponses arrivent. Le compteur « X/23 réponses » crée un sentiment d\'urgence positive et permet à l\'enseignant de savoir quand tout le monde a répondu.'));
@@ -3210,24 +3885,14 @@
     tl.add(() => setNarrationStep(3, 'Projection sans changement d\'outil : le même bouton « Partager l\'écran » diffuse instantanément le contenu de l\'enseignant. La modal de projection montre un aperçu en direct et un statut de diffusion, donnant confiance que les élèves voient bien le contenu.'));
 
     const shareScreenBtn = document.getElementById('p-btn-share-screen');
-    const projectOverlay = document.getElementById('p-project-overlay');
     tl.add(() => moveCursor(shareScreenBtn, null), '+=0.3');
-    tl.add(() => { shareScreenBtn.classList.add('active-btn'); }, '+=0.15');
-
-    tl.add(() => {
-      projectOverlay.classList.remove('hidden');
-      gsap.fromTo(projectOverlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
-      gsap.fromTo(projectOverlay.querySelector('.sc-project-modal'), { scale: 0.95, y: 20, opacity: 0 }, { scale: 1, y: 0, opacity: 1, duration: 0.4, ease: iosSpring });
-    }, '+=0.2');
+    tl.add(() => { startProjection('Résultats du sondage'); }, '+=0.15');
 
     tl.add(() => {}, '+=2.5');
 
     const stopBtn = document.getElementById('p-btn-stop-project');
     tl.add(() => moveCursor(stopBtn, null));
-    tl.add(() => {
-      gsap.to(projectOverlay, { opacity: 0, duration: 0.3, ease: smooth, onComplete: () => projectOverlay.classList.add('hidden') });
-      shareScreenBtn.classList.remove('active-btn');
-    }, '+=0.15');
+    tl.add(() => { stopProjection(); }, '+=0.15');
     tl.add(() => {}, '+=1');
   }
 
@@ -3303,6 +3968,15 @@
     tl.add(() => { confirm.classList.remove('hidden'); gsap.fromTo(confirm, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.3, ease: smooth }); }, '+=0.1');
     tl.add(() => {}, '+=0.8');
 
+    // --- Ellipse: Student → Teacher (upload + question) ---
+    tl.add(() => showEllipse({
+      direction: 'student-to-teacher',
+      action: 'Chloé rend son devoir, Ravi pose une question',
+      result: 'Les badges d\'interaction apparaissent sur le tableau de bord',
+      duration: 2.5
+    }));
+    tl.add(() => {}, '+=2.8');
+
     // Step 3: Teacher sees notifications
     tl.add(() => setNarrationStep(2, 'Badges comme système nerveux : les badges colorés sur les cartes élèves fonctionnent comme un tableau de bord en temps réel. L\'enseignant voit d\'un coup d\'œil qui a terminé (vert), qui a besoin d\'aide (orange), et peut prioriser ses interventions.'));
     tl.add(() => showScreen('active'));
@@ -3356,23 +4030,13 @@
     // Step 5: Project Chloé's work
     tl.add(() => setNarrationStep(4, 'Valorisation du travail élève : projeter le travail d\'un élève comme exemple positif renforce la motivation intrinsèque. Le pattern de projection est le même que pour l\'écran enseignant, mais le contexte pédagogique change : montrer → valoriser → inspirer.'));
     const shareScreenBtn = document.getElementById('p-btn-share-screen');
-    const projectOverlay = document.getElementById('p-project-overlay');
     tl.add(() => moveCursor(shareScreenBtn, null));
-    tl.add(() => { shareScreenBtn.classList.add('active-btn'); }, '+=0.15');
-
-    tl.add(() => {
-      projectOverlay.classList.remove('hidden');
-      gsap.fromTo(projectOverlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
-      gsap.fromTo(projectOverlay.querySelector('.sc-project-modal'), { scale: 0.95, y: 20, opacity: 0 }, { scale: 1, y: 0, opacity: 1, duration: 0.4, ease: iosSpring });
-    }, '+=0.2');
+    tl.add(() => { startProjection('Travail de Chloé'); }, '+=0.15');
     tl.add(() => {}, '+=2');
 
     const stopBtn = document.getElementById('p-btn-stop-project');
     tl.add(() => moveCursor(stopBtn, null));
-    tl.add(() => {
-      gsap.to(projectOverlay, { opacity: 0, duration: 0.3, ease: smooth, onComplete: () => projectOverlay.classList.add('hidden') });
-      shareScreenBtn.classList.remove('active-btn');
-    }, '+=0.15');
+    tl.add(() => { stopProjection(); }, '+=0.15');
     tl.add(() => {}, '+=1');
   }
 
@@ -3417,17 +4081,10 @@
       gsap.to(scanOverlay, { opacity: 0, duration: 0.3, ease: smooth, onComplete: () => scanOverlay.classList.add('hidden') });
       scanBtn.classList.remove('active-btn');
     }, '+=0.5');
-    tl.add(() => setNarrationStep(4, 'Feedback immédiat : les badges « Reçu » confirment que chaque élève a bien reçu le document.'));
+    tl.add(() => setNarrationStep(4, 'Feedback immédiat : les badges documentaires confirment que chaque élève a bien reçu le fichier.'));
     const ucards = screens.teacher.querySelectorAll('.sc-ucard');
     tl.add(() => {
-      ucards.forEach((card, i) => {
-        const recv = card.querySelector('.sc-ucard-received');
-        if (recv) {
-          recv.classList.remove('hidden');
-          gsap.fromTo(recv, { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.25, delay: i * 0.025, ease: smooth });
-          setTimeout(() => gsap.to(recv, { opacity: 0, duration: 0.3, onComplete: () => recv.classList.add('hidden') }), 2000);
-        }
-      });
+      showReceivedBadge(ucards, 'pdf', 'Exercice.pdf');
     }, '+=0.3');
     tl.add(() => {}, '+=2');
   }
@@ -3661,7 +4318,7 @@
     t6: playT6, t7: playT7, t8: playT8, t9: playT9,
     t10: playT10, t11: playT11, t12: playT12, t13: playT13,
     t14: playT14, t15: playT15, t16: playT16, t17: playT17, t18: playT18,
-    t19: playT19, t20: playT20, t21: playT21, t22: playT22, t23: playT23, t24: playT24,
+    t19: playT19, t20: playT20, t21: playT21, t22: playT22, t23: playT23, t24: playT24, t25: playT25,
     s1: playS1, s2: playS2, s3: playS3, s4: playS4, s5: playS5,
     s6: playS6, s7: playS7,
     sc1: playSC1, sc2: playSC2, sc3: playSC3, sc4: playSC4, sc5: playSC5,
@@ -3694,6 +4351,7 @@
     t22: { title: 'Examen officiel — Configuration', subtitle: 'L\'enseignant lance un examen préparé par l\'administration via le MDM. Les restrictions matérielles sont verrouillées (WiFi, Bluetooth, clavier, navigation).' },
     t23: { title: 'Examen — Surveillance', subtitle: 'L\'enseignant surveille 32 élèves en temps réel pendant l\'examen. Il voit les statuts (en cours, terminé, inactif) et récupère les copies.' },
     t24: { title: 'Examen — Récapitulatif & Copies', subtitle: 'L\'enseignant accède au bilan de l\'examen : copies récupérées, sauvegarde Google Drive, envoi par email aux autorités, mode correction.' },
+    t25: { title: 'Voir l\'écran d\'un élève', subtitle: 'L\'enseignant clique sur la carte d\'un élève pour afficher son écran en plein format. Il navigue entre les élèves avec un carrousel horizontal et peut verrouiller l\'écran individuellement.' },
     s1:  { title: 'Login + Scanner le QR Code', subtitle: 'L\'élève se connecte avec ses identifiants, puis scanne le QR code affiché par l\'enseignant pour rejoindre la classe.' },
     s2:  { title: 'Consulter les ressources', subtitle: 'L\'élève ouvre le panneau de ressources pour accéder aux documents partagés par l\'enseignant pendant la séance.' },
     s3:  { title: 'Envoyer « J\'ai terminé »', subtitle: 'L\'élève sélectionne un message pré-défini et l\'envoie à l\'enseignant pour signaler qu\'il a fini son travail.' },
@@ -3713,18 +4371,18 @@
     sc10: { title: 'Une séance complète de A à Z', subtitle: 'Monsieur Julien gère une séance entière : QR code, distribution, supervision, sondage de compréhension, puis clôture avec sauvegarde automatique. Léa participe activement, Hugo reçoit de l\'aide.' },
   };
 
-  // --- Title bar elements ---
-  const titleBar = document.getElementById('proto-title-bar');
+  // --- Header elements ---
+  const infoHeader = document.getElementById('proto-info-header');
   const titleEl = document.getElementById('proto-title');
   const subtitleEl = document.getElementById('proto-subtitle');
 
   function showProtoTitle(id) {
     const info = protoTitles[id];
-    if (info && titleBar && titleEl && subtitleEl) {
+    if (info && titleEl && subtitleEl) {
+      if (infoBadge) infoBadge.textContent = id.toUpperCase();
       titleEl.textContent = info.title;
       subtitleEl.textContent = info.subtitle;
-      titleBar.classList.remove('hidden');
-      gsap.fromTo(titleBar, { opacity: 0, y: -8 }, { opacity: 1, y: 0, duration: 0.3, ease: smooth });
+      if (infoHeader) gsap.fromTo(infoHeader, { opacity: 0, y: -6 }, { opacity: 1, y: 0, duration: 0.3, ease: smooth });
     }
   }
 
@@ -3732,13 +4390,14 @@
     if (currentTL) { currentTL.kill(); currentTL = null; }
     gsap.set(cursor, { opacity: 0 });
     currentProto = id;
+    isManualNav = false;
 
-    // Hide narration panel for non-scenario prototypes
+    // Hide sidebar for non-scenario prototypes (header already shows title/subtitle)
     if (!id.startsWith('sc')) {
       hideNarration();
     }
 
-    // Show title
+    // Show title in header
     showProtoTitle(id);
 
     tocItems.forEach(item => {
@@ -3759,6 +4418,11 @@
 
     const fn = protoMap[id];
     if (fn) fn();
+
+    // Slow down scenario timelines
+    if (id.startsWith('sc') && currentTL) {
+      currentTL.timeScale(SCENARIO_SPEED);
+    }
   }
 
   // TOC click handlers
