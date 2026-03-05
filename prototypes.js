@@ -28,7 +28,7 @@
 
   // --- TOC ---
   const tocItems = document.querySelectorAll('.proto-toc-item');
-  const btnReplay = document.getElementById('proto-replay');
+  const btnReplay = document.getElementById('proto-toc-replay');
   const cursor = document.getElementById('proto-cursor');
 
   let currentTL = null;
@@ -3377,6 +3377,283 @@
   }
 
   // ============================================================
+  // SCENARIO 6: Scanner un document et le distribuer
+  // ============================================================
+  function playSC6() {
+    resetAll();
+    hideNarration();
+    showNarration({
+      label: 'Scénario 6', title: 'Scanner et distribuer un document papier',
+      situation: 'Monsieur Julien a un exercice papier qu\'il veut distribuer numériquement. Il scanne le document, le convertit en PDF et l\'envoie à toute la classe.',
+      characters: [
+        { name: 'Julien Moreau', initials: 'JM', color: '#3b82f6', role: 'Enseignant' },
+        { name: 'Léa Martin', initials: 'LM', color: '#ec4899', role: 'Élève' },
+      ],
+      steps: [
+        { who: 'teacher', action: 'Activer le scanner', detail: 'Monsieur Julien clique sur Scanner dans la barre d\'actions.' },
+        { who: 'teacher', action: 'Photographier le document', detail: 'Il prend en photo l\'exercice posé sur son bureau.' },
+        { who: 'teacher', action: 'Numériser en PDF', detail: 'Le système recadre, corrige la perspective et convertit en PDF.' },
+        { who: 'teacher', action: 'Envoyer à la classe', detail: 'Il envoie le PDF sur toutes les tablettes en un clic.' },
+        { who: 'student', action: 'Recevoir le document', detail: 'Léa voit le badge « Reçu » apparaître et ouvre l\'exercice.' },
+      ],
+    });
+    const tl = gsap.timeline({ delay: 0.8 });
+    currentTL = tl;
+    tl.add(() => setNarrationStep(0, 'Accès direct depuis la barre d\'actions : pas besoin de quitter l\'interface pour scanner un document.'));
+    setupActiveScreen();
+    // Reuse T14 scan flow
+    const scanBtn = document.getElementById('p-btn-scan');
+    tl.add(() => moveCursor(scanBtn, null), '+=0.3');
+    tl.add(() => { scanBtn.classList.add('active-btn'); }, '+=0.15');
+    const scanOverlay = document.getElementById('p-scan-overlay');
+    tl.add(() => {
+      scanOverlay.classList.remove('hidden');
+      gsap.fromTo(scanOverlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
+    }, '+=0.2');
+    tl.add(() => setNarrationStep(1, 'Capture directe : la caméra s\'active instantanément avec un viseur. Le flash simule la prise de photo.'), '+=0.8');
+    tl.add(() => setNarrationStep(2, 'Traitement automatique : recadrage, correction de perspective, amélioration du contraste et conversion PDF — tout est automatisé.'), '+=1.2');
+    tl.add(() => setNarrationStep(3, 'Envoi natif : le même bouton « Envoyer » que pour les autres ressources. Cohérence de l\'interface.'), '+=1.2');
+    tl.add(() => {
+      gsap.to(scanOverlay, { opacity: 0, duration: 0.3, ease: smooth, onComplete: () => scanOverlay.classList.add('hidden') });
+      scanBtn.classList.remove('active-btn');
+    }, '+=0.5');
+    tl.add(() => setNarrationStep(4, 'Feedback immédiat : les badges « Reçu » confirment que chaque élève a bien reçu le document.'));
+    const ucards = screens.teacher.querySelectorAll('.sc-ucard');
+    tl.add(() => {
+      ucards.forEach((card, i) => {
+        const recv = card.querySelector('.sc-ucard-received');
+        if (recv) {
+          recv.classList.remove('hidden');
+          gsap.fromTo(recv, { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.25, delay: i * 0.025, ease: smooth });
+          setTimeout(() => gsap.to(recv, { opacity: 0, duration: 0.3, onComplete: () => recv.classList.add('hidden') }), 2000);
+        }
+      });
+    }, '+=0.3');
+    tl.add(() => {}, '+=2');
+  }
+
+  // ============================================================
+  // SCENARIO 7: Lancer et surveiller un examen officiel
+  // ============================================================
+  function playSC7() {
+    resetAll();
+    hideNarration();
+    showNarration({
+      label: 'Scénario 7', title: 'Examen officiel de bout en bout',
+      situation: 'Jour d\'examen. Monsieur Julien doit lancer le bac blanc de physique, surveiller 32 élèves pendant 4 heures, récupérer les copies et les transmettre aux autorités.',
+      characters: [
+        { name: 'Julien Moreau', initials: 'JM', color: '#3b82f6', role: 'Enseignant surveillant' },
+        { name: 'Emma Durand', initials: 'ED', color: '#ef4444', role: 'Élève — termine en avance' },
+        { name: 'Nolan Garnier', initials: 'NG', color: '#6366f1', role: 'Élève — reste jusqu\'au bout' },
+      ],
+      steps: [
+        { who: 'teacher', action: 'Ouvrir la session d\'examen', detail: 'Monsieur Julien accède à la séance programmée depuis l\'index.' },
+        { who: 'teacher', action: 'Vérifier les restrictions', detail: 'Il confirme que toutes les restrictions MDM sont actives.' },
+        { who: 'teacher', action: 'Lancer l\'examen', detail: 'L\'examen démarre, les sujets sont distribués automatiquement.' },
+        { who: 'teacher', action: 'Surveiller les copies', detail: 'Il observe les élèves en temps réel. Emma termine en avance.' },
+        { who: 'teacher', action: 'Récupérer et transmettre', detail: 'Il collecte les copies, les sauvegarde et les envoie par email.' },
+      ],
+    });
+    const tl = gsap.timeline({ delay: 0.8 });
+    currentTL = tl;
+    tl.add(() => setNarrationStep(0, 'Index des séances : l\'examen programmé est visible directement dans la liste, avec un badge « Examen officiel ».'));
+    tl.add(() => showScreen('sessions'));
+    const rows = document.querySelectorAll('.sc-session-row');
+    rows.forEach(r => gsap.set(r, { opacity: 0, y: 12 }));
+    tl.add(() => { rows.forEach((r, i) => gsap.to(r, { opacity: 1, y: 0, duration: 0.25, delay: i * 0.04, ease: springS })); }, '+=0.3');
+    tl.add(() => {}, '+=1');
+    tl.add(() => setNarrationStep(1, 'Restrictions verrouillées par l\'administration : l\'enseignant vérifie mais ne peut pas modifier les paramètres de sécurité.'));
+    const examOverlay = document.getElementById('p-exam-overlay');
+    tl.add(() => {
+      examOverlay.classList.remove('hidden');
+      gsap.fromTo(examOverlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
+      gsap.fromTo(examOverlay.querySelector('.sc-exam-modal'), { scale: 0.95, y: 20 }, { scale: 1, y: 0, duration: 0.4, ease: iosSpring });
+    }, '+=0.3');
+    tl.add(() => {}, '+=1.5');
+    tl.add(() => setNarrationStep(2, 'Lancement sécurisé : un seul clic pour démarrer. Les sujets chiffrés sont déverrouillés et distribués automatiquement.'));
+    tl.add(() => {
+      gsap.to(examOverlay, { opacity: 0, duration: 0.3, ease: smooth, onComplete: () => examOverlay.classList.add('hidden') });
+    }, '+=0.5');
+    tl.add(() => setNarrationStep(3, 'Surveillance en temps réel : grille sombre pour limiter la fatigue visuelle. Les statuts changent en direct (en cours → terminé → inactif).'));
+    const survOverlay = document.getElementById('p-exam-surv-overlay');
+    const examGrid = document.getElementById('p-exam-grid');
+    examGrid.innerHTML = '';
+    ['ALLARD T.','BOUCHAMI A.','CHEN W.','DUPONT C.','DURAND E.','FAURE L.','GARNIER N.','GIRARD M.'].forEach(n => {
+      const card = document.createElement('div');
+      card.className = 'sc-exam-card';
+      card.innerHTML = `<div class="sc-exam-card-screen"><div class="sc-screen-content" style="background:#1e293b;display:flex;align-items:center;justify-content:center;font-size:8px;color:#475569">Examen</div></div><div class="sc-exam-card-footer"><span class="sc-exam-card-name">${n}</span><span class="sc-exam-card-status working">En cours</span></div>`;
+      examGrid.appendChild(card);
+    });
+    showScreen('teacher', true);
+    tl.add(() => {
+      survOverlay.classList.remove('hidden');
+      gsap.fromTo(survOverlay, { opacity: 0 }, { opacity: 1, duration: 0.4, ease: smooth });
+    }, '+=0.3');
+    tl.add(() => {}, '+=1.5');
+    tl.add(() => setNarrationStep(4, 'Workflow complet : collecte → sauvegarde locale → Google Drive → email aux autorités. Tout depuis la même interface.'));
+    tl.add(() => {
+      gsap.to(survOverlay, { opacity: 0, duration: 0.3, ease: smooth, onComplete: () => survOverlay.classList.add('hidden') });
+    }, '+=0.5');
+    const recapOverlay = document.getElementById('p-exam-recap-overlay');
+    tl.add(() => {
+      recapOverlay.classList.remove('hidden');
+      gsap.fromTo(recapOverlay, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: smooth });
+      gsap.fromTo(recapOverlay.querySelector('.sc-exam-recap-modal'), { scale: 0.95, y: 20 }, { scale: 1, y: 0, duration: 0.4, ease: iosSpring });
+    }, '+=0.3');
+    tl.add(() => {}, '+=2');
+  }
+
+  // ============================================================
+  // SCENARIO 8: Mode devoir en classe
+  // ============================================================
+  function playSC8() {
+    resetAll();
+    hideNarration();
+    showNarration({
+      label: 'Scénario 8', title: 'Contrôle surprise en classe',
+      situation: 'Monsieur Julien décide de lancer un contrôle de 30 minutes. Il configure les restrictions, distribue le sujet, surveille la progression et récupère les copies à la fin du temps imparti.',
+      characters: [
+        { name: 'Julien Moreau', initials: 'JM', color: '#3b82f6', role: 'Enseignant' },
+        { name: 'Chloé Dupont', initials: 'CD', color: '#ec4899', role: 'Élève — rapide et efficace' },
+        { name: 'Ravi Singh', initials: 'RS', color: '#f97316', role: 'Élève — prend son temps' },
+      ],
+      steps: [
+        { who: 'teacher', action: 'Ouvrir le mode devoir', detail: 'Monsieur Julien ouvre la configuration du mode devoir depuis la séance active.' },
+        { who: 'teacher', action: 'Configurer les restrictions', detail: 'Il bloque internet, désactive les messages et verrouille les applications.' },
+        { who: 'teacher', action: 'Distribuer le devoir', detail: 'Le sujet est envoyé et le minuteur démarre automatiquement.' },
+        { who: 'student', action: 'Travailler et rendre', detail: 'Chloé termine en 20 minutes. Ravi travaille jusqu\'au bout des 30 minutes.' },
+      ],
+    });
+    const tl = gsap.timeline({ delay: 0.8 });
+    currentTL = tl;
+    tl.add(() => setNarrationStep(0, 'Activation depuis la séance : pas besoin de quitter la vue classe. Le mode devoir est une surcouche.'));
+    setupActiveScreen();
+    const assignOverlay = document.getElementById('p-assignment-overlay');
+    tl.add(() => {
+      assignOverlay.classList.remove('hidden');
+      gsap.fromTo(assignOverlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
+      gsap.fromTo(assignOverlay.querySelector('.sc-assignment-modal'), { scale: 0.95, y: 20 }, { scale: 1, y: 0, duration: 0.35, ease: iosSpring });
+    }, '+=0.3');
+    tl.add(() => setNarrationStep(1, 'Restrictions granulaires : chaque restriction est un toggle indépendant. L\'enseignant garde le contrôle total sur ce qui est autorisé.'), '+=1');
+    tl.add(() => setNarrationStep(2, 'Distribution + démarrage simultanés : un seul bouton lance le devoir et démarre le minuteur.'), '+=1.2');
+    tl.add(() => {
+      gsap.to(assignOverlay, { opacity: 0, duration: 0.3, ease: smooth, onComplete: () => assignOverlay.classList.add('hidden') });
+    }, '+=0.5');
+    const ucards = screens.teacher.querySelectorAll('.sc-ucard');
+    tl.add(() => {
+      ucards.forEach((card, i) => {
+        card.classList.add('border-purple');
+        card.style.borderColor = '#8b5cf6';
+      });
+    }, '+=0.3');
+    tl.add(() => setNarrationStep(3, 'Suivi de progression : les badges de complétion permettent de voir en un coup d\'œil qui a terminé et qui travaille encore.'));
+    tl.add(() => {
+      [4, 7, 11].forEach(i => {
+        const card = ucards[i];
+        if (card) {
+          const badge = card.querySelector('.sc-interaction-badge');
+          if (badge) { badge.className = 'sc-interaction-badge badge-done'; badge.innerHTML = '<i class="ph-fill ph-check-circle" style="font-size:11px"></i>'; card.classList.add('badge-active'); gsap.fromTo(badge, { scale: 0 }, { scale: 1, duration: 0.25, ease: iosSpring }); }
+        }
+      });
+    }, '+=0.8');
+    tl.add(() => {}, '+=2');
+  }
+
+  // ============================================================
+  // SCENARIO 9: Mettre en valeur le travail d'un élève
+  // ============================================================
+  function playSC9() {
+    resetAll();
+    hideNarration();
+    showNarration({
+      label: 'Scénario 9', title: 'Mettre en valeur un travail d\'élève',
+      situation: 'Monsieur Julien veut montrer le travail de Chloé à toute la classe. Il agrandit son écran, le projette sur le vidéo projecteur et annote directement le devoir pour expliquer les points forts.',
+      characters: [
+        { name: 'Julien Moreau', initials: 'JM', color: '#3b82f6', role: 'Enseignant' },
+        { name: 'Chloé Dupont', initials: 'CD', color: '#ec4899', role: 'Élève mise à l\'honneur' },
+      ],
+      steps: [
+        { who: 'teacher', action: 'Sélectionner l\'écran de Chloé', detail: 'Monsieur Julien clique sur la carte de Chloé pour l\'agrandir.' },
+        { who: 'teacher', action: 'Projeter l\'écran', detail: 'Il active la projection pour afficher le travail de Chloé au vidéo projecteur.' },
+        { who: 'teacher', action: 'Annoter le devoir', detail: 'Il dessine des annotations sur le devoir pour mettre en évidence les bonnes réponses.' },
+      ],
+    });
+    const tl = gsap.timeline({ delay: 0.8 });
+    currentTL = tl;
+    tl.add(() => setNarrationStep(0, 'Sélection directe : un clic sur la carte agrandit l\'écran de l\'élève en mode spotlight.'));
+    setupActiveScreen();
+    const ucards = screens.teacher.querySelectorAll('.sc-ucard');
+    const chloeCard = ucards[4];
+    tl.add(() => moveCursor(chloeCard, null), '+=0.3');
+    tl.add(() => { if (chloeCard) chloeCard.classList.add('selected'); }, '+=0.15');
+    tl.add(() => setNarrationStep(1, 'Projection contextuelle : le même workflow que pour l\'écran enseignant, mais appliqué au travail d\'un élève. Valoriser sans changer d\'outil.'), '+=1');
+    tl.add(() => setNarrationStep(2, 'Annotation en direct : stylo, surligneur, gomme, choix de couleur. Les traits sont dessinés en direct, comme un enseignant qui annote au tableau.'), '+=1.2');
+    tl.add(() => {}, '+=2');
+  }
+
+  // ============================================================
+  // SCENARIO 10: Parcours complet d'une séance
+  // ============================================================
+  function playSC10() {
+    resetAll();
+    hideNarration();
+    showNarration({
+      label: 'Scénario 10', title: 'Une séance complète de A à Z',
+      situation: 'Monsieur Julien gère une séance entière : ouverture via QR code, distribution de ressources, supervision, sondage, récupération des travaux et clôture avec sauvegarde automatique.',
+      characters: [
+        { name: 'Julien Moreau', initials: 'JM', color: '#3b82f6', role: 'Enseignant' },
+        { name: 'Léa Martin', initials: 'LM', color: '#ec4899', role: 'Élève participative' },
+        { name: 'Hugo Lambert', initials: 'HL', color: '#22c55e', role: 'Élève en difficulté' },
+      ],
+      steps: [
+        { who: 'teacher', action: 'Ouvrir et accueillir', detail: 'Monsieur Julien affiche le QR code, les élèves rejoignent la classe. Il active les écrans.' },
+        { who: 'teacher', action: 'Distribuer et superviser', detail: 'Il envoie le cours, observe les écrans, repère que Hugo est bloqué.' },
+        { who: 'teacher', action: 'Évaluer et ajuster', detail: 'Il lance un sondage rapide. Léa a compris, Hugo a besoin d\'aide.' },
+        { who: 'teacher', action: 'Clôturer la séance', detail: 'Il met fin à la classe. Le récapitulatif s\'affiche, les documents sont sauvegardés sur Google Drive.' },
+      ],
+    });
+    const tl = gsap.timeline({ delay: 0.8 });
+    currentTL = tl;
+    // Step 1: Open class
+    tl.add(() => setNarrationStep(0, 'Flux complet : QR code → connexion progressive → affichage des écrans. L\'enseignant maîtrise chaque étape.'));
+    tl.add(() => showScreen('teacher'));
+    const cards = screens.teacher.querySelectorAll('.sc-ucard');
+    const connCount = screens.teacher.querySelector('.p-conn-count');
+    [0,1,3,4,5,6,7,8,9,10,11,12].forEach((idx, i) => {
+      tl.add(() => {
+        const card = cards[idx];
+        if (card) { card.classList.remove('connecting'); gsap.to(card, { opacity: 1, scale: 1, y: 0, duration: 0.2, ease: springS });
+          const s = card.querySelector('.sc-ucard-status'); if (s) { s.textContent = 'Connecté'; s.className = 'sc-ucard-status connected-status'; } }
+        if (connCount) connCount.textContent = i + 1;
+      }, i * 0.06 + 0.3);
+    });
+    tl.add(() => {}, '+=1');
+    // Step 2: Show screens and distribute
+    tl.add(() => setNarrationStep(1, 'Supervision active : les écrans révèlent l\'activité de chaque élève. L\'enseignant repère les blocages.'));
+    tl.add(() => {
+      cards.forEach(c => {
+        c.classList.remove('no-screen');
+        const sc = c.querySelector('.sc-screen-content');
+        if (sc) gsap.fromTo(sc, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: smooth });
+      });
+    });
+    tl.add(() => {}, '+=1.2');
+    // Step 3: Poll
+    tl.add(() => setNarrationStep(2, 'Évaluation formative : le sondage intégré permet de vérifier la compréhension sans outil externe.'));
+    tl.add(() => {}, '+=1.5');
+    // Step 4: End session
+    tl.add(() => setNarrationStep(3, 'Clôture automatisée : récapitulatif des statistiques, accès aux documents, sauvegarde Google Drive automatique.'));
+    const recapOverlay = document.getElementById('p-recap-overlay');
+    if (recapOverlay) {
+      tl.add(() => {
+        recapOverlay.classList.remove('hidden');
+        gsap.fromTo(recapOverlay, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: smooth });
+      }, '+=0.5');
+    }
+    tl.add(() => {}, '+=2');
+  }
+
+  // ============================================================
   // NAVIGATION
   // ============================================================
   const protoMap = {
@@ -3388,7 +3665,68 @@
     s1: playS1, s2: playS2, s3: playS3, s4: playS4, s5: playS5,
     s6: playS6, s7: playS7,
     sc1: playSC1, sc2: playSC2, sc3: playSC3, sc4: playSC4, sc5: playSC5,
+    sc6: playSC6, sc7: playSC7, sc8: playSC8, sc9: playSC9, sc10: playSC10,
   };
+
+  // --- Titles & subtitles for all prototypes ---
+  const protoTitles = {
+    t1:  { title: 'Ouvrir la classe (QR Code)', subtitle: 'L\'enseignant affiche un QR code en grand. Les élèves le scannent avec leur tablette et rejoignent la classe progressivement. Les cartes apparaissent une à une avec leur statut de connexion.' },
+    t2:  { title: 'Activer les interactions', subtitle: 'L\'enseignant active le suivi en temps réel. Les badges d\'interaction (terminé, question, main levée) apparaissent sur les cartes des élèves pour donner une vue d\'ensemble immédiate.' },
+    t3:  { title: 'Afficher les écrans', subtitle: 'L\'enseignant clique sur « Afficher les écrans » pour voir l\'activité en cours sur chaque tablette. Les miniatures d\'écran apparaissent sur les cartes, remplaçant la vue nom + statut.' },
+    t4:  { title: 'Consulter les messages', subtitle: 'L\'enseignant ouvre le panneau de messages pour lire les questions et retours des élèves. Chaque message affiche le nom, le contenu et un horodatage.' },
+    t5:  { title: 'Verrouiller les écrans', subtitle: 'L\'enseignant verrouille toutes les tablettes d\'un clic. Les écrans des élèves affichent un message de verrouillage. Il peut déverrouiller à tout moment.' },
+    t6:  { title: 'Envoyer une ressource', subtitle: 'L\'enseignant envoie un document PDF à toute la classe. Un badge « Reçu » apparaît sur chaque carte élève pour confirmer la distribution.' },
+    t7:  { title: 'Projeter son écran', subtitle: 'L\'enseignant projette le contenu de son écran sur le vidéo projecteur. Les élèves voient le contenu projeté en temps réel.' },
+    t8:  { title: 'Prendre la main', subtitle: 'L\'enseignant prend le contrôle de toutes les tablettes pour afficher un contenu spécifique. Les élèves ne peuvent plus naviguer librement.' },
+    t9:  { title: 'Créer des groupes', subtitle: 'L\'enseignant sélectionne des élèves pour former des groupes de travail. Les groupes sont identifiés par des couleurs dans la barre supérieure.' },
+    t10: { title: 'Lancer un sondage', subtitle: 'L\'enseignant envoie une question à toute la classe. Les résultats arrivent en temps réel sous forme de barres de progression colorées.' },
+    t11: { title: 'Répondre à un élève', subtitle: 'L\'enseignant ouvre le message d\'un élève et lui répond directement avec un message rapide ou personnalisé.' },
+    t12: { title: 'Mettre 3 écrans en avant', subtitle: 'L\'enseignant sélectionne 3 écrans d\'élèves et les affiche en grand pour les projeter sur le vidéo projecteur.' },
+    t13: { title: 'Annoter un devoir projeté', subtitle: 'L\'enseignant agrandit l\'écran d\'un élève, le projette et active le mode annotation pour dessiner directement sur le devoir.' },
+    t14: { title: 'Scanner et envoyer', subtitle: 'L\'enseignant scanne un document physique avec la caméra, le recadre, le numérise en PDF puis l\'envoie sur toutes les tablettes en quelques secondes.' },
+    t15: { title: 'Fin de séance', subtitle: 'L\'enseignant clique sur « Quitter ». Un récapitulatif s\'affiche avec les statistiques de la séance et l\'accès aux documents échangés.' },
+    t16: { title: 'Partager un lien web', subtitle: 'L\'enseignant envoie une URL à toute la classe. Les élèves reçoivent le lien directement sur leur tablette.' },
+    t17: { title: 'Lancer un minuteur', subtitle: 'L\'enseignant démarre un compteur à rebours visible par toute la classe. La barre change de couleur à mesure que le temps passe.' },
+    t18: { title: 'Groupes aléatoires', subtitle: 'L\'enseignant crée automatiquement des groupes aléatoires. Les élèves sont répartis et les cartes s\'organisent par couleur de groupe.' },
+    t19: { title: 'Accéder aux séances', subtitle: 'L\'enseignant consulte la liste de ses séances passées, en cours et programmées. Il peut filtrer, reprendre ou consulter chaque session.' },
+    t20: { title: 'Nouvelle séance', subtitle: 'L\'enseignant crée une nouvelle séance en renseignant la matière, la classe, l\'horaire et les ressources à distribuer.' },
+    t21: { title: 'Mode devoir', subtitle: 'L\'enseignant configure un exercice noté à durée limitée. Il définit les restrictions (internet, apps) et les ressources autorisées.' },
+    t22: { title: 'Examen officiel — Configuration', subtitle: 'L\'enseignant lance un examen préparé par l\'administration via le MDM. Les restrictions matérielles sont verrouillées (WiFi, Bluetooth, clavier, navigation).' },
+    t23: { title: 'Examen — Surveillance', subtitle: 'L\'enseignant surveille 32 élèves en temps réel pendant l\'examen. Il voit les statuts (en cours, terminé, inactif) et récupère les copies.' },
+    t24: { title: 'Examen — Récapitulatif & Copies', subtitle: 'L\'enseignant accède au bilan de l\'examen : copies récupérées, sauvegarde Google Drive, envoi par email aux autorités, mode correction.' },
+    s1:  { title: 'Login + Scanner le QR Code', subtitle: 'L\'élève se connecte avec ses identifiants, puis scanne le QR code affiché par l\'enseignant pour rejoindre la classe.' },
+    s2:  { title: 'Consulter les ressources', subtitle: 'L\'élève ouvre le panneau de ressources pour accéder aux documents partagés par l\'enseignant pendant la séance.' },
+    s3:  { title: 'Envoyer « J\'ai terminé »', subtitle: 'L\'élève sélectionne un message pré-défini et l\'envoie à l\'enseignant pour signaler qu\'il a fini son travail.' },
+    s4:  { title: 'Poser une question', subtitle: 'L\'élève envoie une question à l\'enseignant sans interrompre la classe, via un message asynchrone.' },
+    s5:  { title: 'Partager un document', subtitle: 'L\'élève dépose un fichier dans la zone de dépôt et l\'envoie à l\'enseignant avec une barre de progression.' },
+    s6:  { title: 'Recevoir une ressource', subtitle: 'L\'élève reçoit une notification toast quand l\'enseignant partage un document. Il peut l\'ouvrir dans le panneau latéral.' },
+    s7:  { title: 'Écran verrouillé', subtitle: 'L\'élève voit son écran verrouillé par l\'enseignant avec un message explicite et neutre.' },
+    sc1: { title: 'Démarrer et distribuer', subtitle: 'Monsieur Julien ouvre sa classe de physique. Ses élèves — Chloé, Marius et les autres — scannent le QR code, rejoignent la séance. Il affiche les écrans, distribue le cours du jour, et Chloé ouvre le PDF sur sa tablette.' },
+    sc2: { title: 'Observer et intervenir', subtitle: 'En milieu de séance, Monsieur Julien observe que Emma navigue hors-sujet. Il vérifie les écrans, verrouille les tablettes pour recentrer la classe, puis consulte les messages de Ravi qui a une question.' },
+    sc3: { title: 'Différencier les parcours', subtitle: 'Monsieur Julien crée un groupe « Approfondissement » avec Lucas et 4 autres élèves avancés. Il leur envoie un exercice supplémentaire pendant que Aya et les autres continuent le parcours standard.' },
+    sc4: { title: 'Évaluer en direct', subtitle: 'Avant de passer au chapitre suivant, Monsieur Julien lance un sondage rapide. Chloé a bien compris, Nolan est perdu. Les résultats en temps réel permettent d\'adapter la suite du cours.' },
+    sc5: { title: 'Collaborer et rendre', subtitle: 'En fin de séance, Chloé dépose son devoir, Ravi pose une dernière question. Monsieur Julien répond à Ravi, projette le travail exemplaire de Chloé à toute la classe, puis clôt la séance.' },
+    sc6: { title: 'Scanner et distribuer un document papier', subtitle: 'Monsieur Julien scanne un exercice papier avec la caméra de son ordinateur, le convertit en PDF et l\'envoie sur toutes les tablettes. Léa le reçoit instantanément.' },
+    sc7: { title: 'Examen officiel de bout en bout', subtitle: 'Jour d\'examen. Monsieur Julien lance le bac blanc, surveille Emma et Nolan pendant 4 heures, récupère les 32 copies et les transmet à l\'académie par email.' },
+    sc8: { title: 'Contrôle surprise en classe', subtitle: 'Monsieur Julien lance un contrôle de 30 minutes avec restrictions. Chloé termine rapidement, Ravi travaille jusqu\'au bout. Les badges de complétion permettent de suivre la progression.' },
+    sc9: { title: 'Mettre en valeur un travail d\'élève', subtitle: 'Monsieur Julien sélectionne le devoir de Chloé, le projette au vidéo projecteur et l\'annote en direct pour montrer les points forts à toute la classe.' },
+    sc10: { title: 'Une séance complète de A à Z', subtitle: 'Monsieur Julien gère une séance entière : QR code, distribution, supervision, sondage de compréhension, puis clôture avec sauvegarde automatique. Léa participe activement, Hugo reçoit de l\'aide.' },
+  };
+
+  // --- Title bar elements ---
+  const titleBar = document.getElementById('proto-title-bar');
+  const titleEl = document.getElementById('proto-title');
+  const subtitleEl = document.getElementById('proto-subtitle');
+
+  function showProtoTitle(id) {
+    const info = protoTitles[id];
+    if (info && titleBar && titleEl && subtitleEl) {
+      titleEl.textContent = info.title;
+      subtitleEl.textContent = info.subtitle;
+      titleBar.classList.remove('hidden');
+      gsap.fromTo(titleBar, { opacity: 0, y: -8 }, { opacity: 1, y: 0, duration: 0.3, ease: smooth });
+    }
+  }
 
   function navigateTo(id) {
     if (currentTL) { currentTL.kill(); currentTL = null; }
@@ -3400,9 +3738,24 @@
       hideNarration();
     }
 
+    // Show title
+    showProtoTitle(id);
+
     tocItems.forEach(item => {
       item.classList.toggle('active', item.dataset.proto === id);
     });
+
+    // Scroll the proto section into view
+    const protoSection = document.getElementById('proto-section');
+    if (protoSection) {
+      protoSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // Scroll active TOC item into view
+    const activeItem = document.querySelector('.proto-toc-item.active');
+    if (activeItem) {
+      activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
 
     const fn = protoMap[id];
     if (fn) fn();
@@ -3424,8 +3777,11 @@
     item.addEventListener('click', () => navigateTo(item.dataset.proto));
   });
 
-  // Replay
-  btnReplay?.addEventListener('click', () => {
+  // Replay (both stage button and TOC button)
+  document.getElementById('proto-replay')?.addEventListener('click', () => {
+    if (currentProto) navigateTo(currentProto);
+  });
+  document.getElementById('proto-toc-replay')?.addEventListener('click', () => {
     if (currentProto) navigateTo(currentProto);
   });
 

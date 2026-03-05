@@ -1053,6 +1053,37 @@ body {
 }
 
 /* --- Screen container (90%×90%) — iPadOS window chrome --- */
+/* --- Prototype title bar --- */
+.proto-title-bar {
+  position: absolute;
+  top: 12px; left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  z-index: 10;
+  pointer-events: none;
+  max-width: 70%;
+}
+.proto-title {
+  font-size: 15px; font-weight: 800; color: #1e293b;
+  margin: 0; line-height: 1.3;
+}
+.proto-subtitle {
+  font-size: 12px; color: #64748b; font-weight: 400;
+  margin: 2px 0 0; line-height: 1.4;
+}
+.proto-title-bar.hidden { display: none; }
+
+/* --- Replay button (stage) --- */
+.proto-replay {
+  position: absolute; bottom: 12px; right: 16px;
+  display: flex; align-items: center; gap: 5px;
+  padding: 6px 14px; border-radius: 8px; border: 1px solid #e2e8f0;
+  background: #fff; color: #64748b; font-size: 11px; font-weight: 600;
+  cursor: pointer; z-index: 10;
+  transition: all 0.15s ease;
+}
+.proto-replay:hover { border-color: #0ea5e9; color: #0ea5e9; }
+
 .proto-screen {
   position: absolute;
   top: 5%; left: 5%;
