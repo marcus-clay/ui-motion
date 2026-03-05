@@ -464,9 +464,9 @@
           <i class="ph ph-chalkboard-teacher" style="font-size:14px"></i>
           Enseignant
         </div>
-        <button class="proto-toc-item active" data-proto="t1"><span class="proto-toc-num">1</span>Ouvrir la classe</button>
+        <button class="proto-toc-item active" data-proto="t1"><span class="proto-toc-num">1</span>Ouvrir la classe (QR code)</button>
         <button class="proto-toc-item" data-proto="t2"><span class="proto-toc-num">2</span>Activer les interactions</button>
-        <button class="proto-toc-item" data-proto="t3"><span class="proto-toc-num">3</span>Afficher l'activité</button>
+        <button class="proto-toc-item" data-proto="t3"><span class="proto-toc-num">3</span>Afficher les écrans</button>
         <button class="proto-toc-item" data-proto="t4"><span class="proto-toc-num">4</span>Consulter les messages</button>
         <button class="proto-toc-item" data-proto="t5"><span class="proto-toc-num">5</span>Verrouiller les écrans</button>
         <button class="proto-toc-item" data-proto="t6"><span class="proto-toc-num">6</span>Envoyer une ressource</button>
@@ -495,7 +495,7 @@
           <i class="ph ph-student" style="font-size:14px"></i>
           Élève
         </div>
-        <button class="proto-toc-item" data-proto="s1"><span class="proto-toc-num">25</span>Rejoindre la séance</button>
+        <button class="proto-toc-item" data-proto="s1"><span class="proto-toc-num">25</span>Login + Scanner QR</button>
         <button class="proto-toc-item" data-proto="s2"><span class="proto-toc-num">26</span>Consulter les ressources</button>
         <button class="proto-toc-item" data-proto="s3"><span class="proto-toc-num">27</span>Envoyer « J'ai terminé »</button>
         <button class="proto-toc-item" data-proto="s4"><span class="proto-toc-num">28</span>Poser une question</button>
@@ -933,10 +933,57 @@
               <span class="sc-status-pill red-pill"><span class="sc-dot red"></span><span class="p-disconn-count">24</span> Déconnectés</span>
             </div>
           </div>
+          <div class="sc-sub-center">
+            <button class="sc-btn-qr" id="p-btn-qr"><i class="ph ph-qr-code" style="font-size:15px"></i> QR Code</button>
+            <button class="sc-btn-show-screens" id="p-btn-show-screens"><i class="ph ph-monitor" style="font-size:15px"></i> Afficher les écrans</button>
+          </div>
           <div class="sc-sub-right">
             <span class="sc-toggle-label">Voir les interactions</span>
             <div class="sc-toggle off" id="p-toggle"><div class="sc-toggle-knob"></div></div>
           </div>
+        </div>
+
+        <!-- QR Code overlay (full-screen for projection) -->
+        <div class="sc-qr-overlay hidden" id="p-qr-overlay">
+          <div class="sc-qr-content">
+            <div class="sc-qr-code" id="p-qr-code">
+              <svg viewBox="0 0 200 200" width="200" height="200">
+                <!-- Stylized QR code pattern -->
+                <rect width="200" height="200" fill="#fff" rx="8"/>
+                <!-- Position markers -->
+                <rect x="10" y="10" width="50" height="50" rx="4" fill="#1e293b"/>
+                <rect x="16" y="16" width="38" height="38" rx="2" fill="#fff"/>
+                <rect x="22" y="22" width="26" height="26" rx="2" fill="#1e293b"/>
+                <rect x="140" y="10" width="50" height="50" rx="4" fill="#1e293b"/>
+                <rect x="146" y="16" width="38" height="38" rx="2" fill="#fff"/>
+                <rect x="152" y="22" width="26" height="26" rx="2" fill="#1e293b"/>
+                <rect x="10" y="140" width="50" height="50" rx="4" fill="#1e293b"/>
+                <rect x="16" y="146" width="38" height="38" rx="2" fill="#fff"/>
+                <rect x="22" y="152" width="26" height="26" rx="2" fill="#1e293b"/>
+                <!-- Data modules -->
+                <rect x="70" y="10" width="8" height="8" fill="#1e293b"/><rect x="86" y="10" width="8" height="8" fill="#1e293b"/><rect x="102" y="10" width="8" height="8" fill="#1e293b"/><rect x="118" y="10" width="8" height="8" fill="#1e293b"/>
+                <rect x="70" y="26" width="8" height="8" fill="#1e293b"/><rect x="94" y="26" width="8" height="8" fill="#1e293b"/><rect x="110" y="26" width="8" height="8" fill="#1e293b"/>
+                <rect x="78" y="42" width="8" height="8" fill="#1e293b"/><rect x="94" y="42" width="8" height="8" fill="#1e293b"/><rect x="118" y="42" width="8" height="8" fill="#1e293b"/>
+                <rect x="70" y="58" width="8" height="8" fill="#1e293b"/><rect x="86" y="58" width="8" height="8" fill="#1e293b"/><rect x="110" y="58" width="8" height="8" fill="#1e293b"/>
+                <rect x="10" y="70" width="8" height="8" fill="#1e293b"/><rect x="26" y="70" width="8" height="8" fill="#1e293b"/><rect x="42" y="70" width="8" height="8" fill="#1e293b"/><rect x="70" y="70" width="8" height="8" fill="#1e293b"/><rect x="94" y="70" width="8" height="8" fill="#1e293b"/><rect x="118" y="70" width="8" height="8" fill="#1e293b"/><rect x="148" y="70" width="8" height="8" fill="#1e293b"/><rect x="164" y="70" width="8" height="8" fill="#1e293b"/><rect x="180" y="70" width="8" height="8" fill="#1e293b"/>
+                <rect x="10" y="86" width="8" height="8" fill="#1e293b"/><rect x="34" y="86" width="8" height="8" fill="#1e293b"/><rect x="78" y="86" width="8" height="8" fill="#1e293b"/><rect x="102" y="86" width="8" height="8" fill="#1e293b"/><rect x="140" y="86" width="8" height="8" fill="#1e293b"/><rect x="172" y="86" width="8" height="8" fill="#1e293b"/>
+                <rect x="18" y="102" width="8" height="8" fill="#1e293b"/><rect x="42" y="102" width="8" height="8" fill="#1e293b"/><rect x="70" y="102" width="8" height="8" fill="#1e293b"/><rect x="94" y="102" width="8" height="8" fill="#1e293b"/><rect x="110" y="102" width="8" height="8" fill="#1e293b"/><rect x="148" y="102" width="8" height="8" fill="#1e293b"/><rect x="164" y="102" width="8" height="8" fill="#1e293b"/>
+                <rect x="10" y="118" width="8" height="8" fill="#1e293b"/><rect x="26" y="118" width="8" height="8" fill="#1e293b"/><rect x="50" y="118" width="8" height="8" fill="#1e293b"/><rect x="86" y="118" width="8" height="8" fill="#1e293b"/><rect x="102" y="118" width="8" height="8" fill="#1e293b"/><rect x="140" y="118" width="8" height="8" fill="#1e293b"/><rect x="156" y="118" width="8" height="8" fill="#1e293b"/><rect x="180" y="118" width="8" height="8" fill="#1e293b"/>
+                <rect x="70" y="140" width="8" height="8" fill="#1e293b"/><rect x="94" y="140" width="8" height="8" fill="#1e293b"/><rect x="118" y="140" width="8" height="8" fill="#1e293b"/><rect x="148" y="140" width="8" height="8" fill="#1e293b"/><rect x="164" y="140" width="8" height="8" fill="#1e293b"/>
+                <rect x="78" y="156" width="8" height="8" fill="#1e293b"/><rect x="102" y="156" width="8" height="8" fill="#1e293b"/><rect x="140" y="156" width="8" height="8" fill="#1e293b"/><rect x="172" y="156" width="8" height="8" fill="#1e293b"/>
+                <rect x="70" y="172" width="8" height="8" fill="#1e293b"/><rect x="86" y="172" width="8" height="8" fill="#1e293b"/><rect x="110" y="172" width="8" height="8" fill="#1e293b"/><rect x="148" y="172" width="8" height="8" fill="#1e293b"/><rect x="180" y="172" width="8" height="8" fill="#1e293b"/>
+                <rect x="78" y="188" width="8" height="8" fill="#1e293b"/><rect x="94" y="188" width="8" height="8" fill="#1e293b"/><rect x="118" y="188" width="8" height="8" fill="#1e293b"/><rect x="156" y="188" width="8" height="8" fill="#1e293b"/><rect x="172" y="188" width="8" height="8" fill="#1e293b"/>
+              </svg>
+            </div>
+            <h3 class="sc-qr-title">Rejoindre la classe</h3>
+            <p class="sc-qr-subtitle">Scannez ce QR code avec votre tablette</p>
+            <div class="sc-qr-code-text">sqool.classe/join/2G3-PHY-2025</div>
+            <div class="sc-qr-status">
+              <span class="sc-dot green"></span>
+              <span id="p-qr-count">0</span>/24 élèves connectés
+            </div>
+          </div>
+          <button class="sc-qr-close" id="p-qr-close">Fermer le QR Code</button>
         </div>
 
         <!-- Timer bar -->
@@ -1514,6 +1561,44 @@
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Student login overlay -->
+        <div class="sc-student-login hidden" id="p-student-login">
+          <div class="sc-login-card">
+            <div class="sc-login-logo">
+              <svg viewBox="0 0 36 36" fill="none" width="48" height="48"><rect x="2" y="2" width="14" height="14" rx="3" fill="#0ea5e9"/><rect x="20" y="2" width="14" height="14" rx="3" fill="#38bdf8"/><rect x="2" y="20" width="14" height="14" rx="3" fill="#38bdf8"/><rect x="20" y="20" width="14" height="14" rx="3" fill="#0ea5e9"/></svg>
+            </div>
+            <h3 class="sc-login-title">SQOOL Classe</h3>
+            <p class="sc-login-subtitle">Connectez-vous pour rejoindre votre classe</p>
+            <div class="sc-login-field" id="p-login-user">
+              <label>Identifiant</label>
+              <div class="sc-login-input">chloe.dupont</div>
+            </div>
+            <div class="sc-login-field" id="p-login-pass">
+              <label>Mot de passe</label>
+              <div class="sc-login-input password">••••••••</div>
+            </div>
+            <button class="sc-login-btn" id="p-login-btn">Se connecter</button>
+          </div>
+        </div>
+
+        <!-- Student QR scan overlay -->
+        <div class="sc-student-qrscan hidden" id="p-student-qrscan">
+          <div class="sc-qrscan-card">
+            <div class="sc-qrscan-viewfinder" id="p-qrscan-viewfinder">
+              <div class="sc-qrscan-corners">
+                <span></span><span></span><span></span><span></span>
+              </div>
+              <div class="sc-qrscan-line" id="p-qrscan-line"></div>
+            </div>
+            <h3 class="sc-qrscan-title">Scanner le QR Code</h3>
+            <p class="sc-qrscan-subtitle">Pointez la caméra vers le QR code affiché par l'enseignant</p>
+            <div class="sc-qrscan-status hidden" id="p-qrscan-status">
+              <i class="ph ph-check-circle" style="font-size:20px;color:#22c55e"></i>
+              <span>Classe rejointe — 2G3 Physique</span>
             </div>
           </div>
         </div>
