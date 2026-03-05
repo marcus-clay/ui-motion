@@ -3071,6 +3071,9 @@
     if (!narrationPanel) return;
     narrationHasContent = true;
     scenarioSteps = config.steps || [];
+    narrationPanel.classList.remove('hidden');
+    narrationPanel.classList.remove('collapsed');
+    narrationPanel.classList.add('open');
 
     // Populate sidebar (context + characters + UX only)
     document.getElementById('sc-narration-label').textContent = config.label;
@@ -3140,6 +3143,13 @@
       currentTL.addLabel('step-' + idx);
     }
 
+    // Scroll step into view within narration body
+    const activeStep = document.getElementById('sc-step-' + idx);
+    if (activeStep) {
+      const body = narrationPanel.querySelector('.sc-narration-body');
+      if (body) activeStep.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
     // Update horizontal step bar
     if (stepsBar) {
       const steps = stepsBar.querySelectorAll('.proto-step');
@@ -3183,8 +3193,8 @@
   function hideNarration() {
     if (!narrationPanel) return;
     narrationHasContent = false;
-    narrationPanel.classList.add('hidden');
-    narrationPanel.classList.remove('collapsed');
+    narrationPanel.classList.remove('open');
+    narrationPanel.classList.add('collapsed');
     if (narrationExpand) narrationExpand.classList.add('hidden');
     if (stepsWrapper) stepsWrapper.classList.add('hidden');
     if (stepsBar) stepsBar.innerHTML = '';
@@ -3193,6 +3203,7 @@
     scenarioSteps = [];
     scenarioStepCallbacks = [];
     currentStepIdx = -1;
+    setTimeout(() => narrationPanel.classList.add('hidden'), 400);
   }
 
   // Toggle button handlers

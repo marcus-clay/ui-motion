@@ -2802,41 +2802,52 @@ body {
    SCENARIO DESCRIPTION SIDEBAR (collapsible, pushes layout)
    ============================================================ */
 .sc-narration {
-  width: 300px;
-  flex-shrink: 0;
-  background: rgba(255,255,255,.97);
+  position: fixed; top: 0; right: 0;
+  width: 300px; height: 100vh;
+  background: rgba(255,255,255,.96);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border-left: 1px solid rgba(0,0,0,.06);
-  box-shadow: -4px 0 16px rgba(0,0,0,.04);
-  z-index: 5;
+  border-left: 1px solid rgba(0,0,0,.08);
+  box-shadow: -4px 0 24px rgba(0,0,0,.06);
+  z-index: 60;
   display: flex; flex-direction: column;
   font-family: 'Inter', sans-serif;
-  position: relative;
-  overflow: visible;
-  transition: margin-right .35s cubic-bezier(.25,.46,.45,.94), opacity .3s ease;
+  transform: translateX(260px);
+  transition: transform .4s cubic-bezier(.4,0,.2,1);
+}
+.sc-narration.open {
+  transform: translateX(0);
+}
+.sc-narration.collapsed {
+  transform: translateX(260px);
 }
 .sc-narration.hidden { display: none; }
-.sc-narration.collapsed { margin-right: -300px; }
-
-/* Toggle button — inside sidebar top-right corner */
 .sc-narration-toggle {
-  position: absolute; top: 10px; right: 10px;
-  width: 28px; height: 28px; border-radius: 7px;
-  border: 1px solid rgba(0,0,0,.06);
-  background: rgba(0,0,0,.03);
-  color: #94a3b8; cursor: pointer; z-index: 10;
-  display: flex; align-items: center; justify-content: center;
-  transition: all .15s ease;
+  position: absolute; left: -1px; top: 50%; transform: translate(-100%, -50%);
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,.96);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0,0,0,.08);
+  border-right: none;
+  border-radius: 10px 0 0 10px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px; font-weight: 600; color: #007aff;
+  box-shadow: -2px 2px 8px rgba(0,0,0,.06);
+  white-space: nowrap;
+  transition: background .2s;
 }
-.sc-narration-toggle:hover { background: rgba(0,0,0,.06); color: #1e293b; }
-.sc-narration-toggle svg { width: 12px; height: 12px; transition: transform .3s; }
-.sc-narration.collapsed .sc-narration-toggle { display: none; }
+.sc-narration-toggle:hover { background: rgba(0,122,255,.06); }
+.sc-narration-chevron {
+  transition: transform .3s;
+}
+.sc-narration.open .sc-narration-chevron { transform: rotate(0deg); }
+.sc-narration.collapsed .sc-narration-chevron { transform: rotate(180deg); }
 
 /* Scrollable body */
 .sc-narration-body {
   flex: 1; overflow-y: auto; overflow-x: hidden;
-  padding-top: 6px; min-width: 300px;
 }
 .sc-narration-body::-webkit-scrollbar { width: 2px; }
 .sc-narration-body::-webkit-scrollbar-thumb { background: rgba(0,0,0,.08); border-radius: 2px; }
