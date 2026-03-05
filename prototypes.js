@@ -1,6 +1,6 @@
 /* ============================================================
-   SQOOL Classe — 14 Interactive Prototype Journeys
-   9 Teacher (t1–t9) + 5 Student (s1–s5)
+   SQOOL Classe — Interactive Prototype Journeys
+   Unified teacher screen + Student screen
    Full-screen, GSAP iPadOS motion
    ============================================================ */
 (function () {
@@ -16,12 +16,14 @@
   const iosSnap  = 'power2.inOut';
   const iosSpring = 'power3.out';
 
-  // --- Screens ---
+  // --- Screens (unified: single teacher screen + student screen) ---
   const screens = {
-    pre: document.getElementById('scr-teacher-pre'),
-    active: document.getElementById('scr-teacher-active'),
+    teacher: document.getElementById('scr-teacher'),
     student: document.getElementById('scr-student'),
   };
+  // Backward-compat aliases
+  screens.pre = screens.teacher;
+  screens.active = screens.teacher;
 
   // --- TOC ---
   const tocItems = document.querySelectorAll('.proto-toc-item');
@@ -32,12 +34,15 @@
   let currentProto = null;
 
   // --- Screen switching (iPadOS page transition) ---
+  // Accepts 'teacher', 'student', and legacy 'pre'/'active' (both map to teacher)
   function showScreen(id, instant) {
-    Object.values(screens).forEach(s => {
+    const resolvedId = (id === 'pre' || id === 'active') ? 'teacher' : id;
+    const uniqueScreens = [screens.teacher, screens.student];
+    uniqueScreens.forEach(s => {
       s.classList.remove('active');
       gsap.set(s, { opacity: 0, x: 30, scale: 0.97, pointerEvents: 'none' });
     });
-    const scr = screens[id];
+    const scr = screens[resolvedId] || screens.teacher;
     if (instant) {
       gsap.set(scr, { opacity: 1, x: 0, scale: 1, pointerEvents: 'auto' });
     } else {
@@ -81,72 +86,69 @@
 
   // --- Reset helpers ---
   function resetPreScreen() {
-    const cards = screens.pre.querySelectorAll('.sc-student-card');
+    // Reset unified cards to "connecting" state
+    const cards = screens.teacher.querySelectorAll('.sc-ucard');
     cards.forEach(c => {
-      c.classList.remove('connected', 'disconnected');
+      c.classList.remove('connected', 'selected', 'locked', 'badge-active',
+        'border-blue', 'border-green', 'border-red');
+      c.classList.add('connecting');
       gsap.set(c, { opacity: 0.35, scale: 0.95, y: 5 });
+      const badge = c.querySelector('.sc-interaction-badge');
+      if (badge) { badge.className = 'sc-interaction-badge hidden'; badge.innerHTML = ''; }
+      const recv = c.querySelector('.sc-ucard-received');
+      if (recv) recv.classList.add('hidden');
     });
     const toggle = document.getElementById('p-toggle');
     if (toggle) { toggle.classList.remove('on'); toggle.classList.add('off'); }
-    screens.pre.querySelector('.p-conn-count').textContent = '0';
-    screens.pre.querySelector('.p-disconn-count').textContent = '24';
-    const bb = document.getElementById('p-bottom-bar');
-    if (bb) { bb.classList.remove('visible'); }
-    const chatBadge = document.getElementById('p-chat-count');
-    if (chatBadge) chatBadge.textContent = '0';
+    const connCount = screens.teacher.querySelector('.p-conn-count');
+    const disconnCount = screens.teacher.querySelector('.p-disconn-count');
+    if (connCount) connCount.textContent = '0';
+    if (disconnCount) disconnCount.textContent = '24';
+    const timerFill = document.getElementById('p-timer-fill');
+    if (timerFill) timerFill.style.width = '0%';
   }
 
   function resetActiveScreen() {
-    // Reset management cards
-    const mgmtCards = screens.active.querySelectorAll('.sc-mgmt-card');
-    mgmtCards.forEach(c => {
-      c.classList.remove('locked', 'selected', 'badge-active');
+    // Reset unified cards to active state
+    const ucards = screens.teacher.querySelectorAll('.sc-ucard');
+    ucards.forEach(c => {
+      c.classList.remove('locked', 'selected', 'badge-active', 'connecting',
+        'border-blue', 'border-green', 'border-red');
       gsap.set(c, { opacity: 1, y: 0, scale: 1 });
       const badge = c.querySelector('.sc-interaction-badge');
-      if (badge) {
-        badge.className = 'sc-interaction-badge hidden';
-        badge.innerHTML = '';
-      }
-    });
-
-    // Reset screen-view cards
-    const screenCards = screens.active.querySelectorAll('.sc-screen-card');
-    screenCards.forEach(c => {
-      c.classList.remove('border-blue', 'border-green', 'border-red', 'locked');
-      c.querySelectorAll('.sc-card-received').forEach(b => b.remove());
-      gsap.set(c, { opacity: 1, y: 0, scale: 1 });
+      if (badge) { badge.className = 'sc-interaction-badge hidden'; badge.innerHTML = ''; }
+      const recv = c.querySelector('.sc-ucard-received');
+      if (recv) recv.classList.add('hidden');
       const screenContent = c.querySelector('.sc-screen-content');
       const screenOff = c.querySelector('.sc-screen-off');
       if (screenContent) gsap.set(screenContent, { opacity: 1, scale: 1 });
       if (screenOff) gsap.set(screenOff, { opacity: 0 });
-      const status = c.querySelector('.sc-card-status');
-      if (status) {
-        status.classList.remove('locked-status');
-        if (status.dataset.originalText) {
-          status.textContent = status.dataset.originalText;
-          status.className = 'sc-card-status ' + (status.dataset.originalClass || 'active-status');
-          status.style.background = '';
-          status.style.color = '';
-        }
-      }
+      const status = c.querySelector('.sc-ucard-status');
+      if (status) { status.style.background = ''; status.style.color = ''; }
     });
 
-    // Reset grids visibility
-    const mgmtGrid = document.getElementById('p-grid-mgmt');
-    const screenGrid = document.getElementById('p-grid-active');
-    if (mgmtGrid) { mgmtGrid.classList.remove('hidden'); gsap.set(mgmtGrid, { opacity: 1 }); }
-    if (screenGrid) { screenGrid.classList.add('hidden'); gsap.set(screenGrid, { opacity: 1 }); }
+    // Reset grid visibility
+    const grid = document.getElementById('p-grid');
+    if (grid) { grid.classList.remove('hidden'); gsap.set(grid, { opacity: 1 }); }
+
+    // Hide spotlight
+    document.getElementById('p-spotlight')?.classList.add('hidden');
+    const spotCards = document.getElementById('p-spotlight-cards');
+    if (spotCards) spotCards.innerHTML = '';
+
+    // Hide annotation
+    document.getElementById('p-annotation-overlay')?.classList.add('hidden');
+    const canvas = document.getElementById('p-annotation-canvas');
+    if (canvas) canvas.innerHTML = '';
 
     // Reset messages panel
     document.getElementById('p-messages-panel')?.classList.add('hidden');
 
-    // Reset overlays
-    document.getElementById('p-send-overlay')?.classList.add('hidden');
-    document.getElementById('p-project-overlay')?.classList.add('hidden');
-    document.getElementById('p-push-overlay')?.classList.add('hidden');
-    document.getElementById('p-group-overlay')?.classList.add('hidden');
-    document.getElementById('p-poll-overlay')?.classList.add('hidden');
-    document.getElementById('p-reply-overlay')?.classList.add('hidden');
+    // Reset all overlays
+    ['p-send-overlay','p-project-overlay','p-push-overlay','p-group-overlay',
+     'p-poll-overlay','p-reply-overlay','p-recap-overlay','p-scan-overlay'].forEach(id => {
+      document.getElementById(id)?.classList.add('hidden');
+    });
     document.getElementById('p-send-check')?.classList.add('hidden');
 
     // Reset poll state
@@ -157,24 +159,45 @@
     const pollStatus = document.getElementById('p-poll-status');
     if (pollStatus) pollStatus.innerHTML = '<span class="sc-dot green"></span> 0/23 réponses';
 
-    // Reset action bar buttons
-    screens.active.querySelectorAll('.sc-action-btn').forEach(b => b.classList.remove('active-btn'));
+    // Reset action panel buttons
+    screens.teacher.querySelectorAll('.sc-action-btn').forEach(b => b.classList.remove('active-btn'));
 
     // Reset group bar
-    const groupBar = screens.active.querySelector('.sc-group-bar');
-    if (groupBar) {
-      groupBar.querySelectorAll('.sc-group-pill:not(#p-group-classe)').forEach(p => p.remove());
-    }
+    const groupBar = screens.teacher.querySelector('.sc-group-bar');
+    if (groupBar) groupBar.querySelectorAll('.sc-group-pill:not(#p-group-classe)').forEach(p => p.remove());
 
     // Reset group chip selections
     document.querySelectorAll('.sc-group-chip').forEach(c => c.classList.remove('selected'));
 
-    // Reset lock banner
-    screens.active.querySelectorAll('.sc-lock-banner-floating').forEach(b => b.remove());
+    // Reset lock banners
+    screens.teacher.querySelectorAll('.sc-lock-banner-floating').forEach(b => b.remove());
 
     // Reset timer
     const timerFill = document.getElementById('p-timer-fill');
     if (timerFill) timerFill.style.width = '30%';
+
+    // Reset scan overlay state
+    const scanDoc = document.getElementById('p-scan-doc');
+    if (scanDoc) scanDoc.classList.add('hidden');
+    const scanLine = document.getElementById('p-scan-line');
+    if (scanLine) scanLine.classList.add('hidden');
+    const scanSteps = document.getElementById('p-scan-steps');
+    if (scanSteps) { scanSteps.classList.add('hidden'); scanSteps.querySelectorAll('.sc-scan-step').forEach(s => s.classList.remove('active', 'done')); }
+    const scanProgress = document.getElementById('p-scan-progress');
+    if (scanProgress) scanProgress.classList.add('hidden');
+    const scanProgressFill = document.getElementById('p-scan-progress-fill');
+    if (scanProgressFill) scanProgressFill.style.width = '0%';
+    const scanActions = document.getElementById('p-scan-actions');
+    if (scanActions) scanActions.classList.add('hidden');
+
+    // Reset recap drive indicator
+    document.getElementById('p-recap-drive')?.classList.add('hidden');
+
+    // Reset project screen content
+    const projContent = document.getElementById('p-project-screen-content');
+    if (projContent) {
+      projContent.innerHTML = '<div class="sc-screen-h" style="font-size:14px;padding:16px">Écran de l\'enseignant</div><div class="sc-screen-line" style="margin:0 16px 8px;height:5px;border-radius:3px"></div><div class="sc-screen-line short" style="margin:0 16px;height:5px;border-radius:3px;width:40%"></div>';
+    }
   }
 
   function resetStudentScreen() {
@@ -244,10 +267,19 @@
     resetStudentScreen();
   }
 
-  // Helper: set up active screen with all students online
+  // Helper: set up teacher screen with all students visible and active
   function setupActiveScreen() {
-    showScreen('active', true);
+    showScreen('teacher', true);
     resetActiveScreen();
+    // Make all cards visible (not connecting)
+    const ucards = screens.teacher.querySelectorAll('.sc-ucard');
+    ucards.forEach(c => {
+      c.classList.remove('connecting');
+      gsap.set(c, { opacity: 1, y: 0, scale: 1 });
+    });
+    // Set timer to 30%
+    const tf = document.getElementById('p-timer-fill');
+    if (tf) tf.style.width = '30%';
   }
 
   // ============================================================
@@ -261,9 +293,9 @@
     const tl = gsap.timeline({ delay: 0.5 });
     currentTL = tl;
 
-    const cards = screens.pre.querySelectorAll('.sc-student-card');
-    const connCount = screens.pre.querySelector('.p-conn-count');
-    const disconnCount = screens.pre.querySelector('.p-disconn-count');
+    const cards = screens.teacher.querySelectorAll('.sc-ucard');
+    const connCount = screens.teacher.querySelector('.p-conn-count');
+    const disconnCount = screens.teacher.querySelector('.p-disconn-count');
 
     const connectOrder = [0,4,1,7,3,5,9,2,6,8,10,11,13,12,14,15,16,17,18,19,20,21,22];
     let connected = 0;
@@ -271,8 +303,9 @@
     connectOrder.forEach((idx, i) => {
       tl.add(() => {
         const card = cards[idx];
+        if (!card) return;
+        card.classList.remove('connecting');
         gsap.to(card, { opacity: 1, scale: 1, y: 0, duration: 0.3, ease: smooth });
-        card.classList.add('connected');
         connected++;
         connCount.textContent = connected;
         disconnCount.textContent = 24 - connected;
@@ -280,14 +313,10 @@
     });
 
     tl.add(() => {
-      const marius = cards[23] || cards[2];
-      gsap.to(marius, { opacity: 0.35, scale: 0.95, duration: 0.3 });
-      marius.classList.add('disconnected');
-      marius.classList.remove('connected');
-      const bb = document.getElementById('p-bottom-bar');
-      if (bb) {
-        bb.classList.add('visible');
-        document.getElementById('p-bottom-text').textContent = 'Marius BERTHELOT - n\'est pas connecté';
+      const marius = cards[2]; // Marius BERTHELOT
+      if (marius) {
+        marius.classList.add('connecting');
+        gsap.to(marius, { opacity: 0.35, scale: 0.95, duration: 0.3 });
       }
       disconnCount.textContent = '1';
       connCount.textContent = '23';
@@ -302,10 +331,10 @@
     showScreen('pre');
 
     // Pre-set: all connected
-    const preCards = screens.pre.querySelectorAll('.sc-student-card');
-    preCards.forEach(c => { gsap.set(c, { opacity: 1, scale: 1, y: 0 }); c.classList.add('connected'); });
-    screens.pre.querySelector('.p-conn-count').textContent = '23';
-    screens.pre.querySelector('.p-disconn-count').textContent = '1';
+    const preCards = screens.teacher.querySelectorAll('.sc-ucard');
+    preCards.forEach(c => { c.classList.remove('connecting'); gsap.set(c, { opacity: 1, scale: 1, y: 0 }); });
+    screens.teacher.querySelector('.p-conn-count').textContent = '23';
+    screens.teacher.querySelector('.p-disconn-count').textContent = '1';
 
     const tl = gsap.timeline({ delay: 0.5 });
     currentTL = tl;
@@ -318,16 +347,14 @@
       toggle.classList.add('on');
     }, '+=0.2');
 
-    // 2) Transition to active screen (management view)
+    // 2) Cards animate to show interaction badges
     tl.add(() => {}, '+=0.5');
-    tl.add(() => showScreen('active'));
-    tl.add(() => {}, '+=0.4');
 
-    // 3) Management cards stagger in
-    const mgmtCards = screens.active.querySelectorAll('.sc-mgmt-card');
-    mgmtCards.forEach(c => gsap.set(c, { opacity: 0, y: 10, scale: 0.95 }));
+    // 3) Unified cards — show interaction badges appearing
+    const ucards = screens.teacher.querySelectorAll('.sc-ucard');
+    ucards.forEach(c => gsap.set(c, { opacity: 0, y: 10, scale: 0.95 }));
     tl.add(() => {
-      mgmtCards.forEach((c, i) => {
+      ucards.forEach((c, i) => {
         gsap.to(c, { opacity: 1, y: 0, scale: 1, duration: 0.3, delay: i * 0.03, ease: springS });
       });
     });
@@ -346,7 +373,7 @@
 
     badgeData.forEach((bd, i) => {
       tl.add(() => {
-        const card = mgmtCards[bd.idx];
+        const card = ucards[bd.idx];
         if (!card) return;
         const badge = card.querySelector('.sc-interaction-badge');
         if (!badge) return;
@@ -363,75 +390,49 @@
     tl.add(() => {}, '+=1.5');
   }
 
-  // --- T3: Afficher l'activité sur les écrans (toggle to screen view) ---
+  // --- T3: Afficher l'activité sur les écrans (show interaction borders) ---
   function playT3() {
     resetAll();
     setupActiveScreen();
 
-    const mgmtCards = screens.active.querySelectorAll('.sc-mgmt-card');
-    const mgmtGrid = document.getElementById('p-grid-mgmt');
-    const screenGrid = document.getElementById('p-grid-active');
-    const screenCards = screens.active.querySelectorAll('.sc-screen-card');
-    const btnScreenView = document.getElementById('p-btn-screen-view');
-
+    const ucards = screens.teacher.querySelectorAll('.sc-ucard');
     const tl = gsap.timeline({ delay: 0.5 });
     currentTL = tl;
 
-    // Brief pause showing management view
+    // Brief pause showing unified grid
     tl.add(() => {}, '+=0.5');
 
-    // Cursor clicks screen view button in topbar
-    tl.add(() => moveCursor(btnScreenView, null));
-
-    tl.add(() => {
-      btnScreenView.classList.add('active-btn');
-      btnScreenView.style.background = '#007aff';
-      btnScreenView.style.color = '#fff';
-    }, '+=0.15');
-
-    // Management grid fades out
-    tl.add(() => {
-      gsap.to(mgmtGrid, { opacity: 0, duration: 0.25, ease: smooth, onComplete: () => mgmtGrid.classList.add('hidden') });
-    }, '+=0.2');
-
-    // Screen grid appears
-    tl.add(() => {
-      screenGrid.classList.remove('hidden');
-      screenCards.forEach(c => {
-        const content = c.querySelector('.sc-screen-content');
-        if (content) gsap.set(content, { opacity: 0, scale: 0.9 });
-        gsap.set(c, { opacity: 0, y: 12, scale: 0.95 });
-      });
-    }, '+=0.15');
-
-    // Screen cards stagger in
-    tl.add(() => {
-      screenCards.forEach((c, i) => {
-        gsap.to(c, { opacity: 1, y: 0, scale: 1, duration: 0.35, delay: i * 0.04, ease: springS });
-      });
+    // Interaction borders appear on cards one by one
+    tl.add(() => {}, '+=0.3');
+    [{ idx: 4, cls: 'border-green' }, { idx: 5, cls: 'border-green' }, { idx: 22, cls: 'border-green' },
+     { idx: 16, cls: 'border-red' }, { idx: 9, cls: 'border-red' },
+     { idx: 0, cls: 'border-blue' }, { idx: 7, cls: 'border-blue' }, { idx: 10, cls: 'border-blue' }].forEach((item, i) => {
+      tl.add(() => {
+        const card = ucards[item.idx];
+        if (card) {
+          card.classList.add(item.cls);
+          gsap.fromTo(card, { scale: 0.97 }, { scale: 1, duration: 0.2, ease: iosSpring });
+        }
+      }, i * 0.15 + 0.2);
     });
-    tl.add(() => {}, '+=0.6');
 
-    // Screen content reveals
+    // Add badges too
     tl.add(() => {
-      screenCards.forEach((c, i) => {
-        const content = c.querySelector('.sc-screen-content');
-        if (content) {
-          gsap.to(content, { opacity: 1, scale: 1, duration: 0.35, delay: i * 0.04, ease: smooth });
+      [{ idx: 4, type: 'badge-done' }, { idx: 5, type: 'badge-done' },
+       { idx: 9, type: 'badge-question' }, { idx: 16, type: 'badge-help' }].forEach(bd => {
+        const card = ucards[bd.idx];
+        if (!card) return;
+        const badge = card.querySelector('.sc-interaction-badge');
+        if (badge) {
+          badge.className = 'sc-interaction-badge ' + bd.type;
+          badge.innerHTML = '<i class="ph-fill ph-' + (bd.type === 'badge-done' ? 'check-circle' : bd.type === 'badge-question' ? 'question' : 'hand-waving') + '" style="font-size:11px"></i>';
+          card.classList.add('badge-active');
+          gsap.fromTo(badge, { scale: 0 }, { scale: 1, duration: 0.25, ease: iosSpring });
         }
       });
-    }, '+=0.2');
+    }, '+=0.3');
 
-    // Add some interaction borders
-    tl.add(() => {}, '+=0.6');
-    [{ idx: 3, cls: 'border-green' }, { idx: 7, cls: 'border-green' },
-     { idx: 4, cls: 'border-red' }, { idx: 9, cls: 'border-red' },
-     { idx: 0, cls: 'border-blue' }, { idx: 8, cls: 'border-blue' }].forEach((item, i) => {
-      tl.add(() => { screenCards[item.idx]?.classList.add(item.cls); }, i > 0 ? '-=0.02' : '+=0.1');
-      tl.add(() => {}, '+=0.12');
-    });
-
-    tl.add(() => {}, '+=1');
+    tl.add(() => {}, '+=1.5');
   }
 
   // --- T4: Consulter les messages ---
@@ -439,13 +440,13 @@
     resetAll();
     setupActiveScreen();
 
-    const mgmtGrid = document.getElementById('p-grid-mgmt');
+    const grid = document.getElementById('p-grid');
     const panel = document.getElementById('p-messages-panel');
 
-    // Add some badges to management cards
-    const mgmtCards = screens.active.querySelectorAll('.sc-mgmt-card');
+    // Add some badges to unified cards
+    const ucards = screens.teacher.querySelectorAll('.sc-ucard');
     [{ idx: 5, type: 'badge-question' }, { idx: 3, type: 'badge-done' }, { idx: 4, type: 'badge-question' }].forEach(bd => {
-      const card = mgmtCards[bd.idx];
+      const card = ucards[bd.idx];
       if (!card) return;
       const badge = card.querySelector('.sc-interaction-badge');
       if (badge) {
@@ -461,14 +462,14 @@
     tl.add(() => {}, '+=0.5');
 
     // Cursor clicks a badge card to open messages
-    const targetCard = mgmtCards[5];
+    const targetCard = ucards[5];
     tl.add(() => moveCursor(targetCard, null));
 
-    // Show messages panel, hide grid
+    // Show messages panel, dim grid
     tl.add(() => {
       panel.classList.remove('hidden');
       gsap.fromTo(panel, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: springS });
-      gsap.to(mgmtGrid, { opacity: 0.3, duration: 0.2 });
+      gsap.to(grid, { opacity: 0.3, duration: 0.2 });
     }, '+=0.2');
 
     // Messages appear one by one
@@ -486,7 +487,7 @@
     resetAll();
     setupActiveScreen();
 
-    const mgmtCards = screens.active.querySelectorAll('.sc-mgmt-card');
+    const ucards = screens.teacher.querySelectorAll('.sc-ucard');
     const lockBtn = document.getElementById('p-btn-lock');
 
     const tl = gsap.timeline({ delay: 0.5 });
@@ -494,23 +495,24 @@
 
     tl.add(() => {}, '+=0.5');
 
-    // Cursor clicks lock button in action bar
+    // Cursor clicks lock button in action panel
     tl.add(() => moveCursor(lockBtn, null));
 
     tl.add(() => {
       lockBtn.classList.add('active-btn');
     }, '+=0.12');
 
-    // Management cards go into locked state one by one (wave effect)
+    // Unified cards go into locked state one by one (wave effect)
     tl.add(() => {
-      mgmtCards.forEach((card, i) => {
+      ucards.forEach((card, i) => {
         setTimeout(() => {
           card.classList.add('locked');
-          const avatar = card.querySelector('.sc-avatar-status');
-          if (avatar) {
-            avatar.classList.remove('online');
-            avatar.classList.add('away');
-          }
+          const screenContent = card.querySelector('.sc-screen-content');
+          const screenOff = card.querySelector('.sc-screen-off');
+          if (screenContent) gsap.to(screenContent, { opacity: 0, scale: 0.95, duration: 0.2 });
+          if (screenOff) gsap.to(screenOff, { opacity: 1, duration: 0.2 });
+          const status = card.querySelector('.sc-ucard-status');
+          if (status) { status.textContent = 'Verrouillé'; status.style.background = '#ff3b30'; status.style.color = '#fff'; }
           gsap.fromTo(card, { scale: 1 }, { scale: 0.97, duration: 0.1, yoyo: true, repeat: 1, ease: smooth });
         }, i * 50);
       });
@@ -521,7 +523,7 @@
       const banner = document.createElement('div');
       banner.className = 'sc-lock-banner-floating';
       banner.innerHTML = '<i class="ph-fill ph-lock-simple" style="font-size:18px"></i> Écrans verrouillés';
-      screens.active.appendChild(banner);
+      screens.teacher.appendChild(banner);
       gsap.fromTo(banner,
         { scale: 0.9, opacity: 0 },
         { scale: 1, opacity: 1, duration: 0.3, ease: smooth }
@@ -537,20 +539,21 @@
       lockBtn.classList.remove('active-btn');
 
       // Remove floating banner
-      const banner = screens.active.querySelector('.sc-lock-banner-floating');
+      const banner = screens.teacher.querySelector('.sc-lock-banner-floating');
       if (banner) {
         gsap.to(banner, { opacity: 0, scale: 0.9, duration: 0.2, onComplete: () => banner.remove() });
       }
 
       // Unlock cards
-      mgmtCards.forEach((card, i) => {
+      ucards.forEach((card, i) => {
         setTimeout(() => {
           card.classList.remove('locked');
-          const avatar = card.querySelector('.sc-avatar-status');
-          if (avatar) {
-            avatar.classList.remove('away');
-            avatar.classList.add('online');
-          }
+          const screenContent = card.querySelector('.sc-screen-content');
+          const screenOff = card.querySelector('.sc-screen-off');
+          if (screenContent) gsap.to(screenContent, { opacity: 1, scale: 1, duration: 0.2 });
+          if (screenOff) gsap.to(screenOff, { opacity: 0, duration: 0.2 });
+          const status = card.querySelector('.sc-ucard-status');
+          if (status) { status.textContent = 'Actif'; status.style.background = ''; status.style.color = ''; status.className = 'sc-ucard-status active-status'; }
         }, i * 40);
       });
     }, '+=0.2');
@@ -563,7 +566,7 @@
     resetAll();
     setupActiveScreen();
 
-    const mgmtCards = screens.active.querySelectorAll('.sc-mgmt-card');
+    const ucards = screens.teacher.querySelectorAll('.sc-ucard');
     const shareDocBtn = document.getElementById('p-btn-share-doc');
 
     const tl = gsap.timeline({ delay: 0.5 });
@@ -605,25 +608,16 @@
       shareDocBtn.classList.remove('active-btn');
     }, '+=0.6');
 
-    // Feedback on management cards — staggered received badges
+    // Feedback on unified cards — show received badge on each card
     tl.add(() => {
-      mgmtCards.forEach((card, i) => {
-        if (card.classList.contains('locked')) return;
-        const badge = document.createElement('div');
-        badge.className = 'sc-card-received';
-        badge.innerHTML = '<i class="ph-fill ph-check-circle" style="font-size:14px;color:#34c759"></i>';
-        card.appendChild(badge);
-        gsap.fromTo(badge,
-          { opacity: 0, scale: 0.5 },
-          { opacity: 1, scale: 1, duration: 0.25, delay: i * 0.03, ease: smooth }
-        );
-        gsap.fromTo(card,
-          { boxShadow: '0 0 0 0 rgba(52,199,89,0)' },
-          { boxShadow: '0 0 0 2px rgba(52,199,89,.3)', duration: 0.2, delay: i * 0.03, yoyo: true, repeat: 1 }
-        );
-        setTimeout(() => {
-          gsap.to(badge, { opacity: 0, duration: 0.3, onComplete: () => badge.remove() });
-        }, 2000 + i * 30);
+      ucards.forEach((card, i) => {
+        const recv = card.querySelector('.sc-ucard-received');
+        if (recv) {
+          recv.classList.remove('hidden');
+          gsap.fromTo(recv, { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.25, delay: i * 0.03, ease: smooth });
+          gsap.fromTo(card, { boxShadow: '0 0 0 0 rgba(52,199,89,0)' }, { boxShadow: '0 0 0 2px rgba(52,199,89,.3)', duration: 0.2, delay: i * 0.03, yoyo: true, repeat: 1 });
+          setTimeout(() => { gsap.to(recv, { opacity: 0, duration: 0.3, onComplete: () => recv.classList.add('hidden') }); }, 2000 + i * 30);
+        }
       });
     }, '+=0.3');
 
@@ -694,7 +688,7 @@
     setupActiveScreen();
 
     const overlay = document.getElementById('p-push-overlay');
-    const mgmtCards = screens.active.querySelectorAll('.sc-mgmt-card');
+    const ucards = screens.teacher.querySelectorAll('.sc-ucard');
 
     const tl = gsap.timeline({ delay: 0.5 });
     currentTL = tl;
@@ -733,7 +727,7 @@
 
     // Cards show "pushed" state — all lock briefly with doc icon
     tl.add(() => {
-      mgmtCards.forEach((card, i) => {
+      ucards.forEach((card, i) => {
         setTimeout(() => {
           card.classList.add('locked');
           const badge = card.querySelector('.sc-interaction-badge');
@@ -751,7 +745,7 @@
 
     // Release control
     tl.add(() => {
-      mgmtCards.forEach((card, i) => {
+      ucards.forEach((card, i) => {
         setTimeout(() => {
           card.classList.remove('locked');
           const badge = card.querySelector('.sc-interaction-badge');
@@ -825,7 +819,7 @@
 
     // New group pill appears in group bar
     tl.add(() => {
-      const groupBar = screens.active.querySelector('.sc-group-bar');
+      const groupBar = screens.teacher.querySelector('.sc-group-bar');
       const addBtn = document.getElementById('p-btn-group-add');
       const pill = document.createElement('button');
       pill.className = 'sc-group-pill';
@@ -837,10 +831,10 @@
       );
 
       // Highlight selected management cards
-      const mgmtCards = screens.active.querySelectorAll('.sc-mgmt-card');
+      const ucards = screens.teacher.querySelectorAll('.sc-ucard');
       selectOrder.forEach((chipIdx) => {
         const chipStudent = chips[chipIdx]?.dataset.student;
-        mgmtCards.forEach(card => {
+        ucards.forEach(card => {
           if (card.dataset.student === chipStudent) {
             card.classList.add('selected');
             gsap.fromTo(card,
@@ -1261,12 +1255,12 @@
     resetAll();
     setupActiveScreen();
 
-    const mgmtGrid = document.getElementById('p-grid-mgmt');
+    const mgmtGrid = document.getElementById('p-grid');
     const panel = document.getElementById('p-messages-panel');
-    const mgmtCards = screens.active.querySelectorAll('.sc-mgmt-card');
+    const ucards = screens.teacher.querySelectorAll('.sc-ucard');
 
     // Show badge on Ravi's card
-    const raviCard = mgmtCards[9]; // Ravi Singh
+    const raviCard = ucards[9]; // Ravi Singh
     if (raviCard) {
       const badge = raviCard.querySelector('.sc-interaction-badge');
       if (badge) {
@@ -1346,6 +1340,572 @@
     }, '+=1');
 
     tl.add(() => {}, '+=1');
+  }
+
+  // ============================================================
+  // T12: Mettre 3 écrans en avant (spotlight 3 students)
+  // ============================================================
+  function playT12() {
+    resetAll();
+    setupActiveScreen();
+    const ucards = screens.teacher.querySelectorAll('.sc-ucard');
+    const tl = gsap.timeline({ delay: 0.5 });
+    currentTL = tl;
+
+    // Select 3 students
+    const selectIndices = [4, 6, 9]; // Chloé, Lucas, Ravi
+    selectIndices.forEach((idx, i) => {
+      tl.add(() => {
+        moveCursor(ucards[idx], null);
+      }, i === 0 ? '+=0.3' : '+=0.4');
+      tl.add(() => {
+        ucards[idx].classList.add('selected');
+        gsap.fromTo(ucards[idx], { scale: 0.96 }, { scale: 1, duration: 0.2, ease: iosSpring });
+      }, '+=0.15');
+    });
+
+    tl.add(() => {}, '+=0.5');
+
+    // Show spotlight view
+    const grid = document.getElementById('p-grid');
+    const spotlight = document.getElementById('p-spotlight');
+    const spotCards = document.getElementById('p-spotlight-cards');
+
+    tl.add(() => {
+      gsap.to(grid, { opacity: 0, scale: 0.97, duration: 0.3, ease: smooth });
+    });
+    tl.add(() => {
+      grid.classList.add('hidden');
+      spotlight.classList.remove('hidden');
+      // Clone selected cards into spotlight
+      selectIndices.forEach(idx => {
+        const clone = ucards[idx].cloneNode(true);
+        clone.classList.remove('selected');
+        clone.style.opacity = '0';
+        spotCards.appendChild(clone);
+      });
+      gsap.fromTo(spotlight, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: smooth });
+      const spotClones = spotCards.querySelectorAll('.sc-ucard');
+      spotClones.forEach((c, i) => {
+        gsap.fromTo(c, { opacity: 0, y: 20, scale: 0.95 }, { opacity: 1, y: 0, scale: 1, duration: 0.4, delay: i * 0.1, ease: iosSpring });
+      });
+    }, '+=0.2');
+
+    tl.add(() => {}, '+=1.5');
+
+    // Project to video projector
+    const shareScreenBtn = document.getElementById('p-btn-share-screen');
+    tl.add(() => moveCursor(shareScreenBtn, null));
+    tl.add(() => { shareScreenBtn.classList.add('active-btn'); }, '+=0.12');
+
+    const projectOverlay = document.getElementById('p-project-overlay');
+    const projContent = document.getElementById('p-project-screen-content');
+    tl.add(() => {
+      // Set project content to show 3 mini screens
+      projContent.innerHTML = '<div style="display:flex;gap:8px;padding:12px;justify-content:center;align-items:center;flex:1">' +
+        selectIndices.map(idx => {
+          const name = ucards[idx].querySelector('.sc-ucard-name')?.textContent || '';
+          return '<div style="flex:1;background:#f1f5f9;border-radius:8px;padding:8px;text-align:center"><div style="font-size:10px;font-weight:700;color:#1e293b;margin-bottom:4px">' + name + '</div><div style="height:40px;background:#e2e8f0;border-radius:4px"></div></div>';
+        }).join('') + '</div>';
+      projectOverlay.classList.remove('hidden');
+      gsap.fromTo(projectOverlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
+      gsap.fromTo(projectOverlay.querySelector('.sc-project-modal'), { scale: 0.95, y: 20 }, { scale: 1, y: 0, duration: 0.4, ease: iosSpring });
+    }, '+=0.2');
+
+    tl.add(() => {}, '+=2.5');
+
+    // Stop projection
+    const stopBtn = document.getElementById('p-btn-stop-project');
+    tl.add(() => moveCursor(stopBtn, null));
+    tl.add(() => {
+      gsap.to(projectOverlay, { opacity: 0, duration: 0.3, ease: smooth, onComplete: () => projectOverlay.classList.add('hidden') });
+      shareScreenBtn.classList.remove('active-btn');
+    }, '+=0.15');
+
+    // Return to grid
+    const closeBtn = document.getElementById('p-spotlight-close');
+    tl.add(() => moveCursor(closeBtn, null), '+=0.5');
+    tl.add(() => {
+      gsap.to(spotlight, { opacity: 0, duration: 0.3, ease: smooth, onComplete: () => {
+        spotlight.classList.add('hidden');
+        spotCards.innerHTML = '';
+      }});
+      grid.classList.remove('hidden');
+      gsap.fromTo(grid, { opacity: 0, scale: 0.97 }, { opacity: 1, scale: 1, duration: 0.3, ease: smooth });
+      ucards.forEach(c => c.classList.remove('selected'));
+    }, '+=0.15');
+
+    tl.add(() => {}, '+=1');
+  }
+
+  // ============================================================
+  // T13: Annoter un devoir projeté (spotlight one + annotate)
+  // ============================================================
+  function playT13() {
+    resetAll();
+    setupActiveScreen();
+    const ucards = screens.teacher.querySelectorAll('.sc-ucard');
+    const tl = gsap.timeline({ delay: 0.5 });
+    currentTL = tl;
+
+    // Select Chloé's card
+    const chloeIdx = 4;
+    tl.add(() => moveCursor(ucards[chloeIdx], null), '+=0.3');
+    tl.add(() => { ucards[chloeIdx].classList.add('selected'); }, '+=0.15');
+
+    // Show spotlight with just Chloé's screen enlarged
+    const grid = document.getElementById('p-grid');
+    const spotlight = document.getElementById('p-spotlight');
+    const spotCards = document.getElementById('p-spotlight-cards');
+
+    tl.add(() => {
+      gsap.to(grid, { opacity: 0, duration: 0.3, ease: smooth, onComplete: () => grid.classList.add('hidden') });
+    }, '+=0.3');
+    tl.add(() => {
+      spotlight.classList.remove('hidden');
+      const clone = ucards[chloeIdx].cloneNode(true);
+      clone.classList.remove('selected');
+      clone.style.width = '320px';
+      spotCards.appendChild(clone);
+      gsap.fromTo(spotlight, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: smooth });
+      gsap.fromTo(clone, { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.4, ease: iosSpring });
+    }, '+=0.2');
+
+    tl.add(() => {}, '+=1');
+
+    // Project
+    const shareScreenBtn = document.getElementById('p-btn-share-screen');
+    tl.add(() => moveCursor(shareScreenBtn, null));
+    tl.add(() => { shareScreenBtn.classList.add('active-btn'); }, '+=0.12');
+
+    const projectOverlay = document.getElementById('p-project-overlay');
+    const projContent = document.getElementById('p-project-screen-content');
+    tl.add(() => {
+      projContent.innerHTML = '<div style="padding:16px"><div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:8px">Devoir de Chloé DUPONT</div><div style="height:4px;background:rgba(0,0,0,.08);border-radius:2px;margin-bottom:6px"></div><div style="height:4px;background:rgba(0,0,0,.08);border-radius:2px;width:70%;margin-bottom:6px"></div><div style="height:4px;background:rgba(0,0,0,.08);border-radius:2px;margin-bottom:6px"></div><div style="height:4px;background:rgba(0,0,0,.06);border-radius:2px;width:50%"></div></div>';
+      projectOverlay.classList.remove('hidden');
+      gsap.fromTo(projectOverlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
+      gsap.fromTo(projectOverlay.querySelector('.sc-project-modal'), { scale: 0.95, y: 20 }, { scale: 1, y: 0, duration: 0.4, ease: iosSpring });
+    }, '+=0.2');
+    tl.add(() => {}, '+=1');
+
+    // Close projection, open annotation
+    tl.add(() => {
+      gsap.to(projectOverlay, { opacity: 0, duration: 0.2, ease: smooth, onComplete: () => projectOverlay.classList.add('hidden') });
+    });
+
+    const annotOverlay = document.getElementById('p-annotation-overlay');
+    const canvas = document.getElementById('p-annotation-canvas');
+    tl.add(() => {
+      annotOverlay.classList.remove('hidden');
+      gsap.fromTo(annotOverlay, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: smooth });
+    }, '+=0.3');
+
+    // Simulate pen annotations
+    const annotations = [
+      { d: 'M 150 180 Q 200 160 250 185 Q 300 210 350 175', color: '#ff3b30', delay: 0.3 },
+      { d: 'M 100 250 L 400 250', color: '#ff3b30', delay: 0.8 },
+      { d: 'M 500 120 Q 520 100 560 110 Q 600 120 580 140 Q 560 160 520 150 Q 500 140 500 120', color: '#007aff', delay: 0.5 },
+    ];
+
+    annotations.forEach(ann => {
+      tl.add(() => {
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', ann.d);
+        path.setAttribute('stroke', ann.color);
+        path.setAttribute('stroke-width', '3');
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke-linecap', 'round');
+        path.setAttribute('stroke-linejoin', 'round');
+        const length = path.getTotalLength ? path.getTotalLength() : 300;
+        path.style.strokeDasharray = length;
+        path.style.strokeDashoffset = length;
+        canvas.appendChild(path);
+        gsap.to(path, { strokeDashoffset: 0, duration: 0.6, ease: smooth });
+      }, '+=' + ann.delay);
+    });
+
+    tl.add(() => {}, '+=2');
+
+    // Close annotation
+    const annotClose = document.getElementById('p-annot-close');
+    tl.add(() => moveCursor(annotClose, null));
+    tl.add(() => {
+      gsap.to(annotOverlay, { opacity: 0, duration: 0.3, ease: smooth, onComplete: () => { annotOverlay.classList.add('hidden'); canvas.innerHTML = ''; } });
+      shareScreenBtn.classList.remove('active-btn');
+      gsap.to(spotlight, { opacity: 0, duration: 0.3, onComplete: () => { spotlight.classList.add('hidden'); spotCards.innerHTML = ''; }});
+      grid.classList.remove('hidden');
+      gsap.fromTo(grid, { opacity: 0 }, { opacity: 1, duration: 0.3 });
+      ucards[chloeIdx].classList.remove('selected');
+    }, '+=0.15');
+
+    tl.add(() => {}, '+=1');
+  }
+
+  // ============================================================
+  // T14: Scanner et envoyer un document
+  // ============================================================
+  function playT14() {
+    resetAll();
+    setupActiveScreen();
+    const tl = gsap.timeline({ delay: 0.5 });
+    currentTL = tl;
+
+    // Click scan button
+    const scanBtn = document.getElementById('p-btn-scan');
+    tl.add(() => moveCursor(scanBtn, null), '+=0.3');
+    tl.add(() => { scanBtn.classList.add('active-btn'); }, '+=0.12');
+
+    // Show scan overlay
+    const scanOverlay = document.getElementById('p-scan-overlay');
+    tl.add(() => {
+      scanOverlay.classList.remove('hidden');
+      gsap.fromTo(scanOverlay, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: smooth });
+      gsap.fromTo(scanOverlay.querySelector('.sc-scan-modal'), { scale: 0.95, y: 20 }, { scale: 1, y: 0, duration: 0.4, ease: iosSpring });
+    }, '+=0.2');
+    tl.add(() => {}, '+=0.8');
+
+    // Take photo (click capture button)
+    const captureBtn = document.getElementById('p-scan-capture');
+    tl.add(() => moveCursor(captureBtn, null));
+    tl.add(() => {
+      gsap.to(captureBtn, { scale: 0.85, duration: 0.08, yoyo: true, repeat: 1 });
+      // Flash effect
+      gsap.fromTo(scanOverlay.querySelector('.sc-scan-viewfinder'),
+        { background: '#fff' }, { background: '#0f172a', duration: 0.3, ease: smooth });
+    }, '+=0.1');
+
+    // Show captured document
+    const scanDoc = document.getElementById('p-scan-doc');
+    tl.add(() => {
+      scanDoc.classList.remove('hidden');
+      gsap.fromTo(scanDoc, { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.35, ease: iosSpring });
+    }, '+=0.3');
+
+    // Show processing steps
+    const scanSteps = document.getElementById('p-scan-steps');
+    const scanProgress = document.getElementById('p-scan-progress');
+    const scanFill = document.getElementById('p-scan-progress-fill');
+    const steps = scanSteps.querySelectorAll('.sc-scan-step');
+
+    tl.add(() => {
+      scanSteps.classList.remove('hidden');
+      scanProgress.classList.remove('hidden');
+      gsap.fromTo(scanSteps, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.3, ease: smooth });
+    }, '+=0.5');
+
+    // Step 1: Crop
+    tl.add(() => { steps[0].classList.add('active'); gsap.to(scanFill, { width: '25%', duration: 0.5, ease: smooth }); }, '+=0.3');
+    tl.add(() => { steps[0].classList.remove('active'); steps[0].classList.add('done'); }, '+=0.6');
+
+    // Step 2: Perspective
+    tl.add(() => {
+      steps[1].classList.add('active');
+      gsap.to(scanFill, { width: '50%', duration: 0.5, ease: smooth });
+      gsap.to(scanDoc, { skewX: 0, skewY: 0, duration: 0.4, ease: smooth }); // simulate perspective correction
+    }, '+=0.1');
+    tl.add(() => { steps[1].classList.remove('active'); steps[1].classList.add('done'); }, '+=0.6');
+
+    // Step 3: Enhance/digitize
+    const scanLine = document.getElementById('p-scan-line');
+    tl.add(() => {
+      steps[2].classList.add('active');
+      gsap.to(scanFill, { width: '75%', duration: 0.5, ease: smooth });
+      scanLine.classList.remove('hidden');
+      gsap.fromTo(scanLine, { top: '0%' }, { top: '100%', duration: 1, ease: smooth, onComplete: () => scanLine.classList.add('hidden') });
+      gsap.to(scanDoc.querySelector('.sc-scan-page'), { background: '#fff', filter: 'contrast(1.2)', duration: 0.5, ease: smooth });
+    }, '+=0.1');
+    tl.add(() => { steps[2].classList.remove('active'); steps[2].classList.add('done'); }, '+=1');
+
+    // Step 4: Convert to PDF
+    tl.add(() => {
+      steps[3].classList.add('active');
+      gsap.to(scanFill, { width: '100%', duration: 0.4, ease: smooth });
+    }, '+=0.1');
+    tl.add(() => { steps[3].classList.remove('active'); steps[3].classList.add('done'); }, '+=0.5');
+
+    // Show send button
+    const scanActions = document.getElementById('p-scan-actions');
+    tl.add(() => {
+      scanActions.classList.remove('hidden');
+      gsap.fromTo(scanActions, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.3, ease: smooth });
+    }, '+=0.3');
+
+    // Click send
+    const scanSend = document.getElementById('p-scan-send');
+    tl.add(() => moveCursor(scanSend, null), '+=0.5');
+    tl.add(() => {
+      gsap.to(scanSend, { scale: 0.96, duration: 0.06, yoyo: true, repeat: 1 });
+    }, '+=0.1');
+
+    // Close scan overlay
+    tl.add(() => {
+      gsap.to(scanOverlay, { opacity: 0, duration: 0.3, ease: smooth, onComplete: () => scanOverlay.classList.add('hidden') });
+      scanBtn.classList.remove('active-btn');
+    }, '+=0.3');
+
+    // Show received badges on all cards
+    const ucards = screens.teacher.querySelectorAll('.sc-ucard');
+    tl.add(() => {
+      ucards.forEach((card, i) => {
+        const recv = card.querySelector('.sc-ucard-received');
+        if (recv) {
+          recv.classList.remove('hidden');
+          gsap.fromTo(recv, { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.25, delay: i * 0.025, ease: smooth });
+          setTimeout(() => gsap.to(recv, { opacity: 0, duration: 0.3, onComplete: () => recv.classList.add('hidden') }), 2000 + i * 20);
+        }
+      });
+    }, '+=0.3');
+
+    tl.add(() => {}, '+=2');
+  }
+
+  // ============================================================
+  // T15: Fin de séance (end session recap)
+  // ============================================================
+  function playT15() {
+    resetAll();
+    setupActiveScreen();
+    const tl = gsap.timeline({ delay: 0.5 });
+    currentTL = tl;
+
+    // Click Quitter button
+    const quitBtn = document.getElementById('p-btn-quit');
+    tl.add(() => moveCursor(quitBtn, null), '+=0.3');
+    tl.add(() => {
+      gsap.to(quitBtn, { scale: 0.96, duration: 0.06, yoyo: true, repeat: 1 });
+    }, '+=0.1');
+
+    // Show recap overlay
+    const recapOverlay = document.getElementById('p-recap-overlay');
+    tl.add(() => {
+      recapOverlay.classList.remove('hidden');
+      gsap.fromTo(recapOverlay, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: smooth });
+      gsap.fromTo(recapOverlay.querySelector('.sc-recap-modal'), { scale: 0.95, y: 20 }, { scale: 1, y: 0, duration: 0.4, ease: iosSpring });
+    }, '+=0.3');
+
+    // Stats animate in
+    const stats = recapOverlay.querySelectorAll('.sc-recap-stat-val');
+    stats.forEach((s, i) => {
+      const target = parseInt(s.textContent);
+      s.textContent = '0';
+      tl.add(() => {
+        gsap.to(s, { textContent: target, duration: 0.6, ease: smooth, snap: { textContent: 1 }, onUpdate: function() { s.textContent = Math.round(parseFloat(s.textContent)); } });
+      }, i * 0.1 + 0.3);
+    });
+    tl.add(() => {}, '+=0.8');
+
+    // Click download all
+    const dlAllBtn = document.getElementById('p-recap-dl-all');
+    tl.add(() => moveCursor(dlAllBtn, null), '+=0.5');
+    tl.add(() => {
+      gsap.to(dlAllBtn, { scale: 0.96, duration: 0.06, yoyo: true, repeat: 1 });
+      dlAllBtn.innerHTML = '<i class="ph ph-check" style="font-size:14px"></i> Téléchargé';
+      dlAllBtn.style.color = '#34c759';
+    }, '+=0.1');
+
+    // Google Drive notification appears
+    const driveNotif = document.getElementById('p-recap-drive');
+    tl.add(() => {
+      driveNotif.classList.remove('hidden');
+      gsap.fromTo(driveNotif, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4, ease: iosSpring });
+    }, '+=0.8');
+
+    tl.add(() => {}, '+=2');
+
+    // Close
+    const closeBtn = document.getElementById('p-recap-close');
+    tl.add(() => moveCursor(closeBtn, null));
+    tl.add(() => {
+      gsap.to(recapOverlay, { opacity: 0, duration: 0.3, ease: smooth, onComplete: () => recapOverlay.classList.add('hidden') });
+    }, '+=0.15');
+
+    tl.add(() => {}, '+=1');
+  }
+
+  // ============================================================
+  // T16: Partager un lien web en direct
+  // ============================================================
+  function playT16() {
+    resetAll();
+    setupActiveScreen();
+    const tl = gsap.timeline({ delay: 0.5 });
+    currentTL = tl;
+
+    // Focus on the action input
+    const actionPanel = document.getElementById('p-action-panel');
+    const shareDocBtn = document.getElementById('p-btn-share-doc');
+    tl.add(() => moveCursor(shareDocBtn, null), '+=0.3');
+    tl.add(() => { shareDocBtn.classList.add('active-btn'); }, '+=0.12');
+
+    // Show send overlay — but with a link
+    const sendOverlay = document.getElementById('p-send-overlay');
+    const sendFile = document.getElementById('p-send-file');
+    tl.add(() => {
+      sendFile.innerHTML = '<span class="sc-res-icon link-badge" style="background:rgba(0,122,255,.1);color:#007aff">WEB</span><span>https://phet.colorado.edu/fr/simulations/gravity</span><span class="sc-send-check hidden" id="p-send-check"><i class="ph-fill ph-check-circle" style="font-size:18px;color:#34c759"></i></span>';
+      sendOverlay.classList.remove('hidden');
+      gsap.fromTo(sendOverlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
+      gsap.fromTo(sendOverlay.querySelector('.sc-send-modal'), { scale: 0.95, y: 20 }, { scale: 1, y: 0, duration: 0.35, ease: smooth });
+    }, '+=0.2');
+
+    const confirmBtn = document.getElementById('p-send-confirm');
+    tl.add(() => moveCursor(confirmBtn, null), '+=0.6');
+    tl.add(() => {
+      const check = document.getElementById('p-send-check');
+      check.classList.remove('hidden');
+      gsap.fromTo(check, { scale: 0 }, { scale: 1, duration: 0.3, ease: smooth });
+    }, '+=0.15');
+    tl.add(() => {
+      gsap.to(sendOverlay, { opacity: 0, duration: 0.25, ease: smooth, onComplete: () => {
+        sendOverlay.classList.add('hidden');
+        // Reset send file content
+        sendFile.innerHTML = '<span class="sc-res-icon pdf">PDF</span><span>Evaluation_Finale.pdf</span><span class="sc-send-check hidden" id="p-send-check"><i class="ph-fill ph-check-circle" style="font-size:18px;color:#34c759"></i></span>';
+      }});
+      shareDocBtn.classList.remove('active-btn');
+    }, '+=0.5');
+
+    // Show received on cards
+    const ucards = screens.teacher.querySelectorAll('.sc-ucard');
+    tl.add(() => {
+      ucards.forEach((card, i) => {
+        const recv = card.querySelector('.sc-ucard-received');
+        if (recv) {
+          recv.classList.remove('hidden');
+          gsap.fromTo(recv, { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.25, delay: i * 0.02, ease: smooth });
+          setTimeout(() => gsap.to(recv, { opacity: 0, duration: 0.3, onComplete: () => recv.classList.add('hidden') }), 1500 + i * 20);
+        }
+      });
+    }, '+=0.3');
+
+    tl.add(() => {}, '+=2');
+  }
+
+  // ============================================================
+  // T17: Lancer un minuteur de travail
+  // ============================================================
+  function playT17() {
+    resetAll();
+    setupActiveScreen();
+    const tl = gsap.timeline({ delay: 0.5 });
+    currentTL = tl;
+
+    const timerFill = document.getElementById('p-timer-fill');
+
+    // Timer starts filling (simulate time passing)
+    tl.add(() => {
+      gsap.to(timerFill, { width: '30%', duration: 0.5, ease: smooth });
+    }, '+=0.3');
+    tl.add(() => {
+      // Change timer color to indicate active timing
+      gsap.to(timerFill, { background: 'linear-gradient(90deg, #34c759, #5ac8fa)', duration: 0.3 });
+    }, '+=0.2');
+
+    // Timer progresses
+    tl.to(timerFill, { width: '50%', duration: 1, ease: smooth }, '+=0.5');
+    tl.to(timerFill, { width: '70%', duration: 0.8, ease: smooth }, '+=0.3');
+    tl.to(timerFill, { width: '85%', duration: 0.6, ease: smooth }, '+=0.2');
+
+    // Timer warning (changes to orange)
+    tl.add(() => {
+      gsap.to(timerFill, { background: 'linear-gradient(90deg, #ff9500, #ffcc02)', duration: 0.3 });
+    }, '+=0.1');
+    tl.to(timerFill, { width: '95%', duration: 0.5, ease: smooth }, '+=0.3');
+
+    // Timer complete (red)
+    tl.add(() => {
+      gsap.to(timerFill, { background: 'linear-gradient(90deg, #ff3b30, #ff6961)', duration: 0.3 });
+    });
+    tl.to(timerFill, { width: '100%', duration: 0.3, ease: smooth }, '+=0.2');
+
+    // Pulse effect when done
+    tl.add(() => {
+      gsap.to(timerFill, { opacity: 0.5, duration: 0.3, yoyo: true, repeat: 3, ease: smooth });
+    }, '+=0.2');
+
+    // Some students send "terminé"
+    const ucards = screens.teacher.querySelectorAll('.sc-ucard');
+    [4, 5, 22, 7].forEach((idx, i) => {
+      tl.add(() => {
+        const card = ucards[idx];
+        if (!card) return;
+        const badge = card.querySelector('.sc-interaction-badge');
+        if (badge) {
+          badge.className = 'sc-interaction-badge badge-done';
+          badge.innerHTML = '<i class="ph-fill ph-check-circle" style="font-size:11px"></i>';
+          card.classList.add('badge-active');
+          gsap.fromTo(badge, { scale: 0 }, { scale: 1, duration: 0.25, ease: iosSpring });
+        }
+      }, i * 0.2);
+    });
+
+    tl.add(() => {}, '+=1.5');
+  }
+
+  // ============================================================
+  // T18: Groupes aléatoires (auto-distribute students)
+  // ============================================================
+  function playT18() {
+    resetAll();
+    setupActiveScreen();
+    const tl = gsap.timeline({ delay: 0.5 });
+    currentTL = tl;
+
+    const createGroupBtn = document.getElementById('p-btn-create-group');
+    const groupOverlay = document.getElementById('p-group-overlay');
+
+    tl.add(() => moveCursor(createGroupBtn, null), '+=0.3');
+    tl.add(() => { createGroupBtn.classList.add('active-btn'); }, '+=0.15');
+
+    tl.add(() => {
+      groupOverlay.classList.remove('hidden');
+      gsap.fromTo(groupOverlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
+      gsap.fromTo(groupOverlay.querySelector('.sc-group-modal'), { scale: 0.95, y: 20 }, { scale: 1, y: 0, duration: 0.35, ease: iosSpring });
+    }, '+=0.2');
+
+    // Auto-select all chips in rapid sequence (random distribution)
+    const chips = document.querySelectorAll('.sc-group-chip');
+    const shuffled = [3, 8, 1, 11, 6, 0, 9, 4, 7, 2, 10, 5];
+    shuffled.forEach((idx, i) => {
+      tl.add(() => {
+        const chip = chips[idx];
+        if (chip) {
+          chip.classList.add('selected');
+          gsap.fromTo(chip, { scale: 0.9 }, { scale: 1, duration: 0.15, ease: smooth });
+        }
+      }, i * 0.06 + 0.3);
+    });
+
+    // Create 3 groups in quick succession
+    const groupBar = screens.teacher.querySelector('.sc-group-bar');
+    const addBtn = document.getElementById('p-btn-group-add');
+
+    tl.add(() => {
+      gsap.to(groupOverlay, { opacity: 0, duration: 0.2, ease: smooth, onComplete: () => groupOverlay.classList.add('hidden') });
+      createGroupBtn.classList.remove('active-btn');
+    }, '+=0.4');
+
+    const groupNames = ['Groupe A', 'Groupe B', 'Groupe C'];
+    const groupColors = ['#3b82f6', '#34c759', '#f97316'];
+    groupNames.forEach((name, i) => {
+      tl.add(() => {
+        const pill = document.createElement('button');
+        pill.className = 'sc-group-pill';
+        pill.textContent = name;
+        pill.style.borderColor = groupColors[i];
+        pill.style.color = groupColors[i];
+        groupBar.insertBefore(pill, addBtn);
+        gsap.fromTo(pill, { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.3, ease: iosSpring });
+      }, i * 0.2 + 0.3);
+    });
+
+    // Highlight cards by group
+    const ucards = screens.teacher.querySelectorAll('.sc-ucard');
+    tl.add(() => {
+      [0,1,2,3].forEach(i => ucards[i]?.classList.add('border-blue'));
+      [4,5,6,7].forEach(i => ucards[i]?.classList.add('border-green'));
+      [8,9,10,11].forEach(i => { if (ucards[i]) { ucards[i].style.borderColor = '#f97316'; ucards[i].style.boxShadow = '0 0 0 1px rgba(249,115,22,.15)'; } });
+    }, '+=0.5');
+
+    tl.add(() => {}, '+=2');
   }
 
   // ============================================================
@@ -1456,7 +2016,7 @@
     tl.add(() => setNarrationStep(0, 'Progressive disclosure : les élèves apparaissent un par un pour donner un sentiment de présence vivante. L\'animation staggered (décalée) crée un rythme naturel qui rassure l\'enseignant.'));
     tl.add(() => showScreen('pre'));
 
-    const preCards = screens.pre.querySelectorAll('.sc-student-card');
+    const preCards = screens.teacher.querySelectorAll('.sc-ucard');
     const connCount = screens.pre.querySelector('.p-conn-count');
     const disconnCount = screens.pre.querySelector('.p-disconn-count');
     let connected = 0;
@@ -1489,10 +2049,10 @@
     tl.add(() => showScreen('active'), '+=0.5');
 
     // Management cards appear
-    const mgmtCards = screens.active.querySelectorAll('.sc-mgmt-card');
-    mgmtCards.forEach(c => gsap.set(c, { opacity: 0, y: 10, scale: 0.95 }));
+    const ucards = screens.teacher.querySelectorAll('.sc-ucard');
+    ucards.forEach(c => gsap.set(c, { opacity: 0, y: 10, scale: 0.95 }));
     tl.add(() => {
-      mgmtCards.forEach((c, i) => gsap.to(c, { opacity: 1, y: 0, scale: 1, duration: 0.3, delay: i * 0.025, ease: springS }));
+      ucards.forEach((c, i) => gsap.to(c, { opacity: 1, y: 0, scale: 1, duration: 0.3, delay: i * 0.025, ease: springS }));
     }, '+=0.3');
     tl.add(() => {}, '+=1');
 
@@ -1521,15 +2081,15 @@
       shareDocBtn.classList.remove('active-btn');
     }, '+=0.5');
 
-    // Card feedback
+    // Card feedback — show received badge
     tl.add(() => {
-      mgmtCards.forEach((card, i) => {
-        const badge = document.createElement('div');
-        badge.className = 'sc-card-received';
-        badge.innerHTML = '<i class="ph-fill ph-check-circle" style="font-size:14px;color:#34c759"></i>';
-        card.appendChild(badge);
-        gsap.fromTo(badge, { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.25, delay: i * 0.025, ease: smooth });
-        setTimeout(() => gsap.to(badge, { opacity: 0, duration: 0.3, onComplete: () => badge.remove() }), 1800 + i * 20);
+      ucards.forEach((card, i) => {
+        const recv = card.querySelector('.sc-ucard-received');
+        if (recv) {
+          recv.classList.remove('hidden');
+          gsap.fromTo(recv, { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.25, delay: i * 0.025, ease: smooth });
+          setTimeout(() => gsap.to(recv, { opacity: 0, duration: 0.3, onComplete: () => recv.classList.add('hidden') }), 1800 + i * 20);
+        }
       });
     }, '+=0.3');
     tl.add(() => {}, '+=1.5');
@@ -1597,33 +2157,9 @@
     tl.add(() => setNarrationStep(0, 'Vue d\'ensemble par miniatures : chaque carte affiche un aperçu en temps réel de l\'écran de l\'élève. Cette transparence permet à l\'enseignant de superviser sans se déplacer physiquement. Le grid 6 colonnes optimise la densité d\'information.'));
     setupActiveScreen();
 
-    // Switch to screen view
-    const btnScreenView = document.getElementById('p-btn-screen-view');
-    const mgmtGrid = document.getElementById('p-grid-mgmt');
-    const screenGrid = document.getElementById('p-grid-active');
-    const screenCards = screens.active.querySelectorAll('.sc-screen-card');
-
-    tl.add(() => moveCursor(btnScreenView, null), '+=0.3');
-    tl.add(() => {
-      btnScreenView.style.background = '#007aff'; btnScreenView.style.color = '#fff';
-      gsap.to(mgmtGrid, { opacity: 0, duration: 0.25, ease: smooth, onComplete: () => mgmtGrid.classList.add('hidden') });
-    }, '+=0.15');
-    tl.add(() => {
-      screenGrid.classList.remove('hidden');
-      screenCards.forEach(c => {
-        const content = c.querySelector('.sc-screen-content');
-        if (content) gsap.set(content, { opacity: 0, scale: 0.9 });
-        gsap.set(c, { opacity: 0, y: 12, scale: 0.95 });
-      });
-    }, '+=0.15');
-    tl.add(() => {
-      screenCards.forEach((c, i) => {
-        gsap.to(c, { opacity: 1, y: 0, scale: 1, duration: 0.3, delay: i * 0.03, ease: springS });
-        const content = c.querySelector('.sc-screen-content');
-        if (content) gsap.to(content, { opacity: 1, scale: 1, duration: 0.3, delay: i * 0.03 + 0.1, ease: smooth });
-      });
-    });
-    tl.add(() => {}, '+=0.8');
+    // Unified grid already shows screens — just highlight
+    const screenCards = screens.teacher.querySelectorAll('.sc-ucard');
+    tl.add(() => {}, '+=0.5');
 
     // Step 2: Spot distracted student
     tl.add(() => setNarrationStep(1, 'Signalétique par couleur : les bordures colorées (vert = terminé, rouge = alerte, bleu = actif) sont un code visuel universel qui ne nécessite pas de lecture. L\'enseignant repère instantanément les situations qui requièrent son attention.'));
@@ -1644,8 +2180,8 @@
       screenCards.forEach((card, i) => {
         const screenContent = card.querySelector('.sc-screen-content');
         const screenOff = card.querySelector('.sc-screen-off');
-        const status = card.querySelector('.sc-card-status');
-        if (status) { status.dataset.originalText = status.textContent; status.dataset.originalClass = status.className.replace('sc-card-status ', ''); }
+        const status = card.querySelector('.sc-ucard-status');
+        if (status) { status.dataset.originalText = status.textContent; }
         gsap.to(screenContent, { opacity: 0, scale: 0.95, duration: 0.3, delay: i * 0.04, ease: smooth });
         gsap.to(screenOff, { opacity: 1, duration: 0.3, delay: i * 0.04 + 0.1, ease: smooth });
         setTimeout(() => {
@@ -1758,7 +2294,7 @@
 
     // New pill
     tl.add(() => {
-      const groupBar = screens.active.querySelector('.sc-group-bar');
+      const groupBar = screens.teacher.querySelector('.sc-group-bar');
       const addBtn = document.getElementById('p-btn-group-add');
       const pill = document.createElement('button');
       pill.className = 'sc-group-pill';
@@ -1820,9 +2356,9 @@
     tl.add(() => { pdfRes.classList.remove('highlight'); closeResPanel(); });
     tl.add(() => showScreen('active'), '+=0.3');
 
-    const mgmtCards = screens.active.querySelectorAll('.sc-mgmt-card');
+    const ucards = screens.teacher.querySelectorAll('.sc-ucard');
     [{ idx: 3, type: 'badge-done' }, { idx: 7, type: 'badge-done' }, { idx: 11, type: 'badge-done' }].forEach(bd => {
-      const card = mgmtCards[bd.idx];
+      const card = ucards[bd.idx];
       if (card) {
         const badge = card.querySelector('.sc-interaction-badge');
         if (badge) { badge.className = 'sc-interaction-badge ' + bd.type; badge.innerHTML = '<i class="ph-fill ph-check-circle" style="font-size:11px"></i>'; card.classList.add('badge-active'); }
@@ -2038,17 +2574,17 @@
     tl.add(() => setNarrationStep(2, 'Badges comme système nerveux : les badges colorés sur les cartes élèves fonctionnent comme un tableau de bord en temps réel. L\'enseignant voit d\'un coup d\'œil qui a terminé (vert), qui a besoin d\'aide (orange), et peut prioriser ses interventions.'));
     tl.add(() => showScreen('active'));
     setupActiveScreen();
-    const mgmtCards = screens.active.querySelectorAll('.sc-mgmt-card');
+    const ucards = screens.teacher.querySelectorAll('.sc-ucard');
 
     tl.add(() => {
       // Chloé done
-      const chloeCard = mgmtCards[4];
+      const chloeCard = ucards[4];
       if (chloeCard) {
         const badge = chloeCard.querySelector('.sc-interaction-badge');
         if (badge) { badge.className = 'sc-interaction-badge badge-done'; badge.innerHTML = '<i class="ph-fill ph-check-circle" style="font-size:11px"></i>'; chloeCard.classList.add('badge-active'); gsap.fromTo(badge, { scale: 0 }, { scale: 1, duration: 0.25, ease: iosSpring }); }
       }
       // Ravi question
-      const raviCard = mgmtCards[9];
+      const raviCard = ucards[9];
       if (raviCard) {
         const badge = raviCard.querySelector('.sc-interaction-badge');
         if (badge) { badge.className = 'sc-interaction-badge badge-question'; badge.innerHTML = '<i class="ph-fill ph-question" style="font-size:11px"></i>'; raviCard.classList.add('badge-active'); gsap.fromTo(badge, { scale: 0 }, { scale: 1, duration: 0.25, delay: 0.2, ease: iosSpring }); }
@@ -2058,7 +2594,7 @@
 
     // Step 4: Reply to Ravi
     tl.add(() => setNarrationStep(3, 'Réponse rapide contextuelle : la modal de réponse pré-remplit le contexte (nom de l\'élève, son message). Les chips de réponse rapide (OK, Patience, Voir le cours) accélèrent la réponse sans saisie clavier. L\'enseignant peut aussi taper un message personnalisé.'));
-    const raviCard2 = mgmtCards[9];
+    const raviCard2 = ucards[9];
     tl.add(() => moveCursor(raviCard2, null));
 
     const replyOverlay = document.getElementById('p-reply-overlay');
@@ -2113,7 +2649,8 @@
   const protoMap = {
     t1: playT1, t2: playT2, t3: playT3, t4: playT4, t5: playT5,
     t6: playT6, t7: playT7, t8: playT8, t9: playT9,
-    t10: playT10, t11: playT11,
+    t10: playT10, t11: playT11, t12: playT12, t13: playT13,
+    t14: playT14, t15: playT15, t16: playT16, t17: playT17, t18: playT18,
     s1: playS1, s2: playS2, s3: playS3, s4: playS4, s5: playS5,
     s6: playS6, s7: playS7,
     sc1: playSC1, sc2: playSC2, sc3: playSC3, sc4: playSC4, sc5: playSC5,
