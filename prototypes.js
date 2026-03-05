@@ -16,8 +16,9 @@
   const iosSnap  = 'power2.inOut';
   const iosSpring = 'power3.out';
 
-  // --- Screens (unified: single teacher screen + student screen) ---
+  // --- Screens (unified: single teacher screen + student screen + sessions) ---
   const screens = {
+    sessions: document.getElementById('scr-sessions'),
     teacher: document.getElementById('scr-teacher'),
     student: document.getElementById('scr-student'),
   };
@@ -34,10 +35,10 @@
   let currentProto = null;
 
   // --- Screen switching (iPadOS page transition) ---
-  // Accepts 'teacher', 'student', and legacy 'pre'/'active' (both map to teacher)
+  // Accepts 'sessions', 'teacher', 'student', and legacy 'pre'/'active' (both map to teacher)
   function showScreen(id, instant) {
     const resolvedId = (id === 'pre' || id === 'active') ? 'teacher' : id;
-    const uniqueScreens = [screens.teacher, screens.student];
+    const uniqueScreens = [screens.sessions, screens.teacher, screens.student].filter(Boolean);
     uniqueScreens.forEach(s => {
       s.classList.remove('active');
       gsap.set(s, { opacity: 0, x: 30, scale: 0.97, pointerEvents: 'none' });
@@ -265,6 +266,14 @@
     resetPreScreen();
     resetActiveScreen();
     resetStudentScreen();
+    // Hide new overlays
+    ['p-newsession-overlay','p-assignment-overlay','p-exam-overlay','p-exam-surv-overlay','p-exam-recap-overlay'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.classList.add('hidden'); gsap.set(el, { opacity: 0 }); }
+    });
+    // Reset email/drive notifications
+    document.getElementById('p-er-drive-notif')?.classList.add('hidden');
+    document.getElementById('p-er-email-draft')?.classList.add('hidden');
   }
 
   // Helper: set up teacher screen with all students visible and active
@@ -1909,6 +1918,531 @@
   }
 
   // ============================================================
+  // T19: ACCESS SESSIONS INDEX (from SQOOL Classe)
+  // ============================================================
+  function playT19() {
+    resetAll();
+    hideNarration();
+
+    const tl = gsap.timeline({ delay: 0.5 });
+    currentTL = tl;
+
+    // Show sessions index
+    tl.add(() => showScreen('sessions'));
+
+    // Session rows stagger in
+    const rows = document.querySelectorAll('.sc-session-row');
+    rows.forEach(r => gsap.set(r, { opacity: 0, y: 12 }));
+    tl.add(() => {
+      rows.forEach((r, i) => gsap.to(r, { opacity: 1, y: 0, duration: 0.3, delay: i * 0.06, ease: springS }));
+    }, '+=0.3');
+
+    // Filter pills animate
+    const filters = document.querySelectorAll('.sc-filter-pill');
+    tl.add(() => {}, '+=1.5');
+
+    // Click on "En cours" filter
+    tl.add(() => {
+      filters.forEach(f => f.classList.remove('active'));
+      filters[1]?.classList.add('active');
+      // Fade out non-active rows
+      rows.forEach(r => {
+        if (!r.classList.contains('active-row')) {
+          gsap.to(r, { opacity: 0.3, duration: 0.25, ease: smooth });
+        }
+      });
+    });
+    tl.add(() => {}, '+=1');
+
+    // Click back to "Toutes"
+    tl.add(() => {
+      filters.forEach(f => f.classList.remove('active'));
+      filters[0]?.classList.add('active');
+      rows.forEach(r => gsap.to(r, { opacity: 1, duration: 0.25, ease: smooth }));
+    });
+    tl.add(() => {}, '+=0.8');
+
+    // Click "Reprendre" to go to teacher screen
+    const resumeBtn = document.getElementById('p-btn-resume-session');
+    tl.add(() => moveCursor(resumeBtn, null));
+    tl.add(() => {
+      gsap.to(resumeBtn, { scale: 0.96, duration: 0.06 });
+      gsap.to(resumeBtn, { scale: 1, duration: 0.15, delay: 0.06, ease: smooth });
+    }, '+=0.15');
+    tl.add(() => showScreen('teacher'), '+=0.3');
+    setupActiveScreen();
+    tl.add(() => {}, '+=1.5');
+  }
+
+  // ============================================================
+  // T20: CREATE NEW SESSION
+  // ============================================================
+  function playT20() {
+    resetAll();
+    hideNarration();
+
+    const tl = gsap.timeline({ delay: 0.5 });
+    currentTL = tl;
+
+    // Start on sessions screen
+    tl.add(() => showScreen('sessions'));
+
+    const rows = document.querySelectorAll('.sc-session-row');
+    rows.forEach(r => gsap.set(r, { opacity: 0, y: 12 }));
+    tl.add(() => {
+      rows.forEach((r, i) => gsap.to(r, { opacity: 1, y: 0, duration: 0.25, delay: i * 0.04, ease: springS }));
+    }, '+=0.3');
+    tl.add(() => {}, '+=0.8');
+
+    // Click "Nouvelle séance"
+    const newBtn = document.getElementById('p-btn-new-session');
+    tl.add(() => moveCursor(newBtn, null));
+    tl.add(() => { newBtn.style.transform = 'scale(0.97)'; }, '+=0.1');
+    tl.add(() => { newBtn.style.transform = ''; }, '+=0.08');
+
+    // Show new session overlay
+    const overlay = document.getElementById('p-newsession-overlay');
+    tl.add(() => {
+      overlay.classList.remove('hidden');
+      gsap.fromTo(overlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
+      gsap.fromTo(overlay.querySelector('.sc-newsession-modal'), { scale: 0.95, y: 20 }, { scale: 1, y: 0, duration: 0.35, ease: iosSpring });
+    }, '+=0.2');
+    tl.add(() => {}, '+=1');
+
+    // Type in title field
+    const titleField = document.getElementById('p-ns-title');
+    tl.add(() => moveCursor(titleField, null));
+    tl.add(() => {
+      titleField.style.borderColor = '#0ea5e9';
+      titleField.style.background = '#fff';
+    }, '+=0.15');
+    tl.add(() => {}, '+=0.5');
+
+    // Toggle an option
+    const toggles = overlay.querySelectorAll('.sc-mini-toggle');
+    const lastToggle = toggles[toggles.length - 1];
+    if (lastToggle) {
+      tl.add(() => moveCursor(lastToggle, null));
+      tl.add(() => { lastToggle.classList.add('on'); }, '+=0.15');
+    }
+    tl.add(() => {}, '+=0.5');
+
+    // Click launch
+    const launchBtn = document.getElementById('p-newsession-launch');
+    tl.add(() => moveCursor(launchBtn, null));
+    tl.add(() => {
+      gsap.to(launchBtn, { scale: 0.96, duration: 0.06 });
+      gsap.to(launchBtn, { scale: 1, duration: 0.15, delay: 0.06, ease: smooth });
+    }, '+=0.15');
+    tl.add(() => {
+      gsap.to(overlay, { opacity: 0, duration: 0.25, ease: smooth, onComplete: () => overlay.classList.add('hidden') });
+    }, '+=0.2');
+
+    // Transition to teacher screen
+    tl.add(() => showScreen('teacher'), '+=0.3');
+    setupActiveScreen();
+    tl.add(() => {}, '+=1.5');
+  }
+
+  // ============================================================
+  // T21: ASSIGNMENT MODE
+  // ============================================================
+  function playT21() {
+    resetAll();
+    hideNarration();
+    setupActiveScreen();
+
+    const tl = gsap.timeline({ delay: 0.5 });
+    currentTL = tl;
+
+    // Open assignment overlay from action panel
+    const overlay = document.getElementById('p-assignment-overlay');
+    tl.add(() => {
+      overlay.classList.remove('hidden');
+      gsap.fromTo(overlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
+      gsap.fromTo(overlay.querySelector('.sc-assignment-modal'), { scale: 0.95, y: 20 }, { scale: 1, y: 0, duration: 0.35, ease: iosSpring });
+    }, '+=0.3');
+    tl.add(() => {}, '+=0.8');
+
+    // Toggle restrictions one by one
+    const toggles = overlay.querySelectorAll('.sc-mini-toggle');
+    toggles.forEach((t, i) => {
+      if (i < 3) return; // first 3 already on
+      tl.add(() => moveCursor(t, null), '+=0.2');
+      tl.add(() => { t.classList.add('on'); }, '+=0.1');
+    });
+    tl.add(() => {}, '+=0.5');
+
+    // Select an app chip
+    const chips = overlay.querySelectorAll('.sc-app-chip');
+    chips.forEach(c => {
+      if (!c.classList.contains('selected')) {
+        tl.add(() => moveCursor(c, null), '+=0.15');
+        tl.add(() => { c.classList.add('selected'); gsap.fromTo(c, { scale: 0.95 }, { scale: 1, duration: 0.15, ease: smooth }); }, '+=0.1');
+      }
+    });
+    tl.add(() => {}, '+=0.5');
+
+    // Click "Distribuer le devoir"
+    const launchBtn = document.getElementById('p-assignment-launch');
+    tl.add(() => moveCursor(launchBtn, null));
+    tl.add(() => {
+      gsap.to(launchBtn, { scale: 0.96, duration: 0.06 });
+      gsap.to(launchBtn, { scale: 1, duration: 0.15, delay: 0.06, ease: smooth });
+    }, '+=0.15');
+    tl.add(() => {
+      gsap.to(overlay, { opacity: 0, duration: 0.25, ease: smooth, onComplete: () => overlay.classList.add('hidden') });
+    }, '+=0.2');
+
+    // Show feedback: assignment distributed to all cards
+    const ucards = screens.teacher.querySelectorAll('.sc-ucard');
+    tl.add(() => {
+      ucards.forEach((card, i) => {
+        card.classList.add('border-purple');
+        card.style.borderColor = '#8b5cf6';
+        card.style.boxShadow = '0 0 0 1px rgba(139,92,246,.15)';
+        const recv = card.querySelector('.sc-ucard-received');
+        if (recv) {
+          recv.classList.remove('hidden');
+          recv.textContent = 'DEVOIR';
+          recv.style.background = '#8b5cf6';
+          gsap.fromTo(recv, { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.25, delay: i * 0.025, ease: smooth });
+          setTimeout(() => gsap.to(recv, { opacity: 0, duration: 0.3, onComplete: () => { recv.classList.add('hidden'); recv.textContent = 'Reçu'; recv.style.background = ''; } }), 2000 + i * 20);
+        }
+      });
+    }, '+=0.4');
+
+    // Timer bar starts (simulates assignment timer)
+    const timerBar = document.querySelector('.sc-timer-bar');
+    const timerFill = document.querySelector('.sc-timer-fill');
+    if (timerFill) {
+      tl.add(() => {
+        gsap.set(timerFill, { width: '0%', background: '#8b5cf6' });
+        gsap.to(timerFill, { width: '15%', duration: 2, ease: 'none' });
+      }, '+=0.3');
+    }
+    tl.add(() => {}, '+=2.5');
+  }
+
+  // ============================================================
+  // T22: OFFICIAL EXAM — CONFIGURATION & LAUNCH
+  // ============================================================
+  function playT22() {
+    resetAll();
+    hideNarration();
+
+    const tl = gsap.timeline({ delay: 0.5 });
+    currentTL = tl;
+
+    // Start on sessions screen
+    tl.add(() => showScreen('sessions'));
+
+    const rows = document.querySelectorAll('.sc-session-row');
+    rows.forEach(r => gsap.set(r, { opacity: 0, y: 12 }));
+    tl.add(() => {
+      rows.forEach((r, i) => gsap.to(r, { opacity: 1, y: 0, duration: 0.25, delay: i * 0.04, ease: springS }));
+    }, '+=0.2');
+    tl.add(() => {}, '+=0.8');
+
+    // Click "Examen officiel" button
+    const examBtn = document.getElementById('p-btn-new-exam');
+    tl.add(() => moveCursor(examBtn, null));
+    tl.add(() => {
+      gsap.to(examBtn, { scale: 0.97, duration: 0.06 });
+      gsap.to(examBtn, { scale: 1, duration: 0.15, delay: 0.06, ease: smooth });
+    }, '+=0.15');
+
+    // Show exam config overlay
+    const overlay = document.getElementById('p-exam-overlay');
+    tl.add(() => {
+      overlay.classList.remove('hidden');
+      gsap.fromTo(overlay, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: smooth });
+      gsap.fromTo(overlay.querySelector('.sc-exam-modal'), { scale: 0.95, y: 20 }, { scale: 1, y: 0, duration: 0.4, ease: iosSpring });
+    }, '+=0.2');
+    tl.add(() => {}, '+=1');
+
+    // Scroll through restrictions (highlight them one by one)
+    const restricts = overlay.querySelectorAll('.sc-exam-restrict');
+    restricts.forEach((r, i) => {
+      tl.add(() => {
+        r.style.background = '#fee2e2';
+        gsap.fromTo(r, { x: -4 }, { x: 0, duration: 0.2, ease: smooth });
+        if (i > 0) restricts[i - 1].style.background = '';
+      }, i === 0 ? '+=0.5' : '+=0.25');
+    });
+    tl.add(() => { restricts[restricts.length - 1].style.background = ''; }, '+=0.3');
+    tl.add(() => {}, '+=0.5');
+
+    // Click "Lancer l'examen"
+    const launchBtn = document.getElementById('p-exam-launch');
+    tl.add(() => moveCursor(launchBtn, null));
+    tl.add(() => {
+      gsap.to(launchBtn, { scale: 0.96, duration: 0.06 });
+      gsap.to(launchBtn, { scale: 1, duration: 0.15, delay: 0.06, ease: smooth });
+      launchBtn.textContent = 'Examen lancé';
+      launchBtn.style.background = '#16a34a';
+    }, '+=0.15');
+    tl.add(() => {
+      gsap.to(overlay, { opacity: 0, duration: 0.3, ease: smooth, onComplete: () => {
+        overlay.classList.add('hidden');
+        launchBtn.innerHTML = '<i class="ph ph-shield-check" style="font-size:14px"></i> Lancer l\'examen';
+        launchBtn.style.background = '';
+      }});
+    }, '+=0.8');
+
+    // Show exam surveillance view
+    const survOverlay = document.getElementById('p-exam-surv-overlay');
+    const examGrid = document.getElementById('p-exam-grid');
+
+    // Generate 32 exam cards
+    examGrid.innerHTML = '';
+    const studentNames = [
+      'ALLARD Théo','BOUCHAMI Aya','CHEN Wei','DUPONT Chloé','FAURE Lucas',
+      'GARNIER Nolan','IBRAHIM Fatou','JOURDAIN Léa','KIM Soo','LAMBERT Hugo',
+      'MARTIN Léa','NGUYEN Tam','OLIVIER Marc','PETIT Clara','QUENTIN Paul',
+      'ROUSSEAU Inès','SINGH Ravi','THOMAS Axel','UEDA Yuki','VIDAL Emma',
+      'WANG Li','XAVIER Jules','YILMAZ Elif','ZHANG Min','BERNARD Alice',
+      'CARON Maxime','DESCHAMPS Lucie','FOURNIER Tom','GIRARD Manon','HENRY Louis',
+      'LEROY Jade','MORIN Enzo'
+    ];
+    studentNames.forEach(name => {
+      const card = document.createElement('div');
+      card.className = 'sc-exam-card';
+      card.innerHTML = `<div class="sc-exam-card-screen"><div class="sc-screen-content" style="background:linear-gradient(135deg,#1e293b,#334155);display:flex;align-items:center;justify-content:center;font-size:8px;color:#475569">Examen</div></div><div class="sc-exam-card-footer"><span class="sc-exam-card-name">${name}</span><span class="sc-exam-card-status working">En cours</span></div>`;
+      examGrid.appendChild(card);
+    });
+
+    tl.add(() => {
+      survOverlay.classList.remove('hidden');
+      gsap.fromTo(survOverlay, { opacity: 0 }, { opacity: 1, duration: 0.4, ease: smooth });
+    }, '+=0.3');
+
+    // Cards stagger in
+    const examCards = examGrid.querySelectorAll('.sc-exam-card');
+    examCards.forEach(c => gsap.set(c, { opacity: 0, scale: 0.9 }));
+    tl.add(() => {
+      examCards.forEach((c, i) => gsap.to(c, { opacity: 1, scale: 1, duration: 0.2, delay: i * 0.02, ease: springS }));
+    }, '+=0.3');
+
+    tl.add(() => {}, '+=2');
+  }
+
+  // ============================================================
+  // T23: EXAM SURVEILLANCE
+  // ============================================================
+  function playT23() {
+    resetAll();
+    hideNarration();
+
+    const tl = gsap.timeline({ delay: 0.5 });
+    currentTL = tl;
+
+    // Set up surveillance view directly
+    const survOverlay = document.getElementById('p-exam-surv-overlay');
+    const examGrid = document.getElementById('p-exam-grid');
+
+    // Generate exam cards
+    examGrid.innerHTML = '';
+    const names = [
+      'ALLARD T.','BOUCHAMI A.','CHEN W.','DUPONT C.','FAURE L.',
+      'GARNIER N.','IBRAHIM F.','JOURDAIN L.','KIM S.','LAMBERT H.',
+      'MARTIN L.','NGUYEN T.','OLIVIER M.','PETIT C.','QUENTIN P.',
+      'ROUSSEAU I.','SINGH R.','THOMAS A.','UEDA Y.','VIDAL E.',
+      'WANG L.','XAVIER J.','YILMAZ E.','ZHANG M.','BERNARD A.',
+      'CARON M.','DESCHAMPS L.','FOURNIER T.','GIRARD M.','HENRY L.',
+      'LEROY J.','MORIN E.'
+    ];
+    names.forEach(name => {
+      const card = document.createElement('div');
+      card.className = 'sc-exam-card';
+      card.innerHTML = `<div class="sc-exam-card-screen"><div class="sc-screen-content" style="background:linear-gradient(135deg,#1e293b,#334155);display:flex;align-items:center;justify-content:center;font-size:8px;color:#475569">Examen</div></div><div class="sc-exam-card-footer"><span class="sc-exam-card-name">${name}</span><span class="sc-exam-card-status working">En cours</span></div>`;
+      examGrid.appendChild(card);
+    });
+
+    showScreen('teacher', true);
+    survOverlay.classList.remove('hidden');
+    gsap.set(survOverlay, { opacity: 1 });
+
+    const examCards = examGrid.querySelectorAll('.sc-exam-card');
+    examCards.forEach(c => gsap.set(c, { opacity: 1, scale: 1 }));
+
+    // Timer countdown simulation
+    const timerText = document.getElementById('p-exam-timer-text');
+    const workingEl = document.getElementById('p-exam-working');
+    const finishedEl = document.getElementById('p-exam-finished');
+
+    tl.add(() => { timerText.textContent = '1:15:30'; }, '+=0.5');
+    tl.add(() => { timerText.textContent = '0:45:20'; }, '+=1');
+
+    // Some students finish
+    const finishOrder = [3, 7, 16, 24, 12, 1, 19, 28];
+    finishOrder.forEach((idx, i) => {
+      tl.add(() => {
+        const card = examCards[idx];
+        if (card) {
+          card.classList.add('finished');
+          const status = card.querySelector('.sc-exam-card-status');
+          if (status) { status.className = 'sc-exam-card-status done'; status.textContent = 'Terminé'; }
+          gsap.fromTo(card, { boxShadow: '0 0 0 2px #22c55e' }, { boxShadow: '0 0 0 1px #22c55e', duration: 0.5 });
+        }
+        workingEl.textContent = 32 - (i + 1) - 2;
+        finishedEl.textContent = i + 1 + 2;
+      }, i === 0 ? '+=0.8' : '+=0.4');
+    });
+
+    tl.add(() => { timerText.textContent = '0:12:05'; }, '+=0.5');
+    tl.add(() => {}, '+=0.5');
+
+    // Alert on a student (idle)
+    tl.add(() => {
+      const alertCard = examCards[5];
+      if (alertCard) {
+        alertCard.classList.add('alert');
+        const status = alertCard.querySelector('.sc-exam-card-status');
+        if (status) { status.className = 'sc-exam-card-status idle'; status.textContent = 'Inactif'; }
+        gsap.fromTo(alertCard, { scale: 1 }, { scale: 1.02, duration: 0.3, yoyo: true, repeat: 2, ease: smooth });
+      }
+    });
+    tl.add(() => {}, '+=1');
+
+    // Collect copies button
+    const collectBtn = document.getElementById('p-exam-collect');
+    tl.add(() => moveCursor(collectBtn, null));
+    tl.add(() => {
+      gsap.to(collectBtn, { scale: 0.96, duration: 0.06 });
+      gsap.to(collectBtn, { scale: 1, duration: 0.15, delay: 0.06, ease: smooth });
+      collectBtn.innerHTML = '<i class="ph ph-check" style="font-size:14px"></i> 32 copies récupérées';
+      collectBtn.style.background = '#16a34a'; collectBtn.style.borderColor = '#16a34a'; collectBtn.style.color = '#fff';
+    }, '+=0.15');
+    tl.add(() => {}, '+=1');
+
+    // End exam
+    const endBtn = document.getElementById('p-exam-end');
+    tl.add(() => moveCursor(endBtn, null));
+    tl.add(() => {
+      gsap.to(endBtn, { scale: 0.96, duration: 0.06 });
+      gsap.to(endBtn, { scale: 1, duration: 0.15, delay: 0.06, ease: smooth });
+    }, '+=0.15');
+
+    // Transition to recap
+    tl.add(() => {
+      gsap.to(survOverlay, { opacity: 0, duration: 0.3, ease: smooth, onComplete: () => {
+        survOverlay.classList.add('hidden');
+        // Reset collect button
+        collectBtn.innerHTML = '<i class="ph ph-download" style="font-size:14px"></i> Récupérer les copies';
+        collectBtn.style.background = ''; collectBtn.style.borderColor = ''; collectBtn.style.color = '';
+      }});
+    }, '+=0.3');
+
+    // Show exam recap
+    const recapOverlay = document.getElementById('p-exam-recap-overlay');
+    tl.add(() => {
+      recapOverlay.classList.remove('hidden');
+      gsap.fromTo(recapOverlay, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: smooth });
+      gsap.fromTo(recapOverlay.querySelector('.sc-exam-recap-modal'), { scale: 0.95, y: 20 }, { scale: 1, y: 0, duration: 0.4, ease: iosSpring });
+    }, '+=0.3');
+
+    // Animate stat numbers
+    ['p-er-copies','p-er-finished','p-er-incidents'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        const target = parseInt(el.textContent);
+        el.textContent = '0';
+        tl.add(() => gsap.to(el, { textContent: target, duration: 0.6, snap: { textContent: 1 }, ease: smooth }), '<');
+      }
+    });
+
+    tl.add(() => {}, '+=2');
+  }
+
+  // ============================================================
+  // T24: EXAM RECAP — SAVE, EMAIL, CORRECTION
+  // ============================================================
+  function playT24() {
+    resetAll();
+    hideNarration();
+    showScreen('teacher', true);
+
+    const tl = gsap.timeline({ delay: 0.5 });
+    currentTL = tl;
+
+    // Show exam recap directly
+    const recapOverlay = document.getElementById('p-exam-recap-overlay');
+    recapOverlay.classList.remove('hidden');
+    gsap.set(recapOverlay, { opacity: 1 });
+    const modal = recapOverlay.querySelector('.sc-exam-recap-modal');
+    gsap.set(modal, { scale: 1, y: 0 });
+
+    tl.add(() => {}, '+=0.5');
+
+    // Click "Télécharger toutes les copies"
+    const dlBtn = document.getElementById('p-er-download');
+    tl.add(() => moveCursor(dlBtn, null));
+    tl.add(() => {
+      gsap.to(dlBtn, { scale: 0.98, duration: 0.06 });
+      gsap.to(dlBtn, { scale: 1, duration: 0.15, delay: 0.06, ease: smooth });
+      dlBtn.style.background = '#dcfce7'; dlBtn.style.borderColor = '#86efac'; dlBtn.style.color = '#16a34a';
+      dlBtn.innerHTML = '<i class="ph ph-check-circle" style="font-size:16px"></i> Téléchargement en cours...';
+    }, '+=0.15');
+    tl.add(() => {
+      dlBtn.innerHTML = '<i class="ph ph-check-circle" style="font-size:16px"></i> 32 copies téléchargées';
+    }, '+=1');
+    tl.add(() => {}, '+=0.5');
+
+    // Click "Sauvegarder sur Google Drive"
+    const driveBtn = document.getElementById('p-er-drive');
+    tl.add(() => moveCursor(driveBtn, null));
+    tl.add(() => {
+      gsap.to(driveBtn, { scale: 0.98, duration: 0.06 });
+      gsap.to(driveBtn, { scale: 1, duration: 0.15, delay: 0.06, ease: smooth });
+    }, '+=0.15');
+    // Show drive notification
+    const driveNotif = document.getElementById('p-er-drive-notif');
+    tl.add(() => {
+      driveNotif.classList.remove('hidden');
+      gsap.fromTo(driveNotif, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.3, ease: smooth });
+    }, '+=0.3');
+    tl.add(() => {}, '+=1');
+
+    // Click "Envoyer par email"
+    const emailBtn = document.getElementById('p-er-email');
+    tl.add(() => moveCursor(emailBtn, null));
+    tl.add(() => {
+      gsap.to(emailBtn, { scale: 0.98, duration: 0.06 });
+      gsap.to(emailBtn, { scale: 1, duration: 0.15, delay: 0.06, ease: smooth });
+    }, '+=0.15');
+    // Show email draft
+    const emailDraft = document.getElementById('p-er-email-draft');
+    tl.add(() => {
+      emailDraft.classList.remove('hidden');
+      gsap.fromTo(emailDraft, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.35, ease: iosSpring });
+    }, '+=0.3');
+    tl.add(() => {}, '+=1.2');
+
+    // Click send email
+    const emailSend = document.getElementById('p-er-email-send');
+    tl.add(() => moveCursor(emailSend, null));
+    tl.add(() => {
+      gsap.to(emailSend, { scale: 0.96, duration: 0.06 });
+      gsap.to(emailSend, { scale: 1, duration: 0.15, delay: 0.06, ease: smooth });
+      emailSend.textContent = 'Envoyé';
+      emailSend.style.background = '#16a34a';
+    }, '+=0.15');
+    tl.add(() => {}, '+=0.8');
+
+    // Click "Ouvrir le mode correction"
+    const correctBtn = document.getElementById('p-er-correct');
+    tl.add(() => moveCursor(correctBtn, null));
+    tl.add(() => {
+      gsap.to(correctBtn, { scale: 0.98, duration: 0.06 });
+      gsap.to(correctBtn, { scale: 1, duration: 0.15, delay: 0.06, ease: smooth });
+      correctBtn.style.background = '#dbeafe'; correctBtn.style.borderColor = '#93c5fd'; correctBtn.style.color = '#2563eb';
+      correctBtn.innerHTML = '<i class="ph ph-pencil-line" style="font-size:16px"></i> Mode correction (bientôt disponible)';
+    }, '+=0.15');
+    tl.add(() => {}, '+=1.5');
+  }
+
+  // ============================================================
   // SCENARIO NARRATION SYSTEM
   // ============================================================
 
@@ -2651,6 +3185,7 @@
     t6: playT6, t7: playT7, t8: playT8, t9: playT9,
     t10: playT10, t11: playT11, t12: playT12, t13: playT13,
     t14: playT14, t15: playT15, t16: playT16, t17: playT17, t18: playT18,
+    t19: playT19, t20: playT20, t21: playT21, t22: playT22, t23: playT23, t24: playT24,
     s1: playS1, s2: playS2, s3: playS3, s4: playS4, s5: playS5,
     s6: playS6, s7: playS7,
     sc1: playSC1, sc2: playSC2, sc3: playSC3, sc4: playSC4, sc5: playSC5,

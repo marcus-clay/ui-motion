@@ -482,6 +482,12 @@
         <button class="proto-toc-item" data-proto="t16"><span class="proto-toc-num">16</span>Partager un lien web</button>
         <button class="proto-toc-item" data-proto="t17"><span class="proto-toc-num">17</span>Lancer un minuteur</button>
         <button class="proto-toc-item" data-proto="t18"><span class="proto-toc-num">18</span>Groupes aléatoires</button>
+        <button class="proto-toc-item" data-proto="t19"><span class="proto-toc-num">19</span>Accéder aux séances</button>
+        <button class="proto-toc-item" data-proto="t20"><span class="proto-toc-num">20</span>Nouvelle séance</button>
+        <button class="proto-toc-item" data-proto="t21"><span class="proto-toc-num">21</span>Mode devoir</button>
+        <button class="proto-toc-item" data-proto="t22"><span class="proto-toc-num">22</span>Examen officiel — config</button>
+        <button class="proto-toc-item" data-proto="t23"><span class="proto-toc-num">23</span>Examen — surveillance</button>
+        <button class="proto-toc-item" data-proto="t24"><span class="proto-toc-num">24</span>Examen — récap &amp; copies</button>
       </div>
 
       <div class="proto-toc-group">
@@ -489,13 +495,13 @@
           <i class="ph ph-student" style="font-size:14px"></i>
           Élève
         </div>
-        <button class="proto-toc-item" data-proto="s1"><span class="proto-toc-num">19</span>Rejoindre la séance</button>
-        <button class="proto-toc-item" data-proto="s2"><span class="proto-toc-num">20</span>Consulter les ressources</button>
-        <button class="proto-toc-item" data-proto="s3"><span class="proto-toc-num">21</span>Envoyer « J'ai terminé »</button>
-        <button class="proto-toc-item" data-proto="s4"><span class="proto-toc-num">22</span>Poser une question</button>
-        <button class="proto-toc-item" data-proto="s5"><span class="proto-toc-num">23</span>Partager un document</button>
-        <button class="proto-toc-item" data-proto="s6"><span class="proto-toc-num">24</span>Recevoir une ressource</button>
-        <button class="proto-toc-item" data-proto="s7"><span class="proto-toc-num">25</span>Écran verrouillé</button>
+        <button class="proto-toc-item" data-proto="s1"><span class="proto-toc-num">25</span>Rejoindre la séance</button>
+        <button class="proto-toc-item" data-proto="s2"><span class="proto-toc-num">26</span>Consulter les ressources</button>
+        <button class="proto-toc-item" data-proto="s3"><span class="proto-toc-num">27</span>Envoyer « J'ai terminé »</button>
+        <button class="proto-toc-item" data-proto="s4"><span class="proto-toc-num">28</span>Poser une question</button>
+        <button class="proto-toc-item" data-proto="s5"><span class="proto-toc-num">29</span>Partager un document</button>
+        <button class="proto-toc-item" data-proto="s6"><span class="proto-toc-num">30</span>Recevoir une ressource</button>
+        <button class="proto-toc-item" data-proto="s7"><span class="proto-toc-num">31</span>Écran verrouillé</button>
       </div>
 
       <div class="proto-toc-divider"></div>
@@ -540,6 +546,362 @@
         <div class="sc-narration-ux hidden" id="sc-narration-ux">
           <div class="sc-narration-ux-label"><i class="ph ph-lightbulb" style="font-size:12px"></i> UX Guideline</div>
           <p class="sc-narration-ux-text" id="sc-narration-ux-text"></p>
+        </div>
+      </div>
+
+      <!-- ===== SCREEN: Session Index ===== -->
+      <div class="proto-screen" id="scr-sessions">
+        <div class="sc-topbar">
+          <div class="sc-topbar-left">
+            <div class="sc-logo"><svg viewBox="0 0 36 36" fill="none"><rect x="2" y="2" width="14" height="14" rx="3" fill="#0ea5e9"/><rect x="20" y="2" width="14" height="14" rx="3" fill="#38bdf8"/><rect x="2" y="20" width="14" height="14" rx="3" fill="#38bdf8"/><rect x="20" y="20" width="14" height="14" rx="3" fill="#0ea5e9"/></svg></div>
+            <span class="sc-logo-text">SQOOL CLASSE</span>
+          </div>
+          <div class="sc-topbar-center">
+            <h2 class="sc-session-title">Mes séances</h2>
+          </div>
+          <div class="sc-topbar-right">
+            <button class="sc-btn-help">?</button>
+            <div class="sc-user-pill"><div class="sc-user-av">TD</div><div class="sc-user-info"><span class="sc-user-name">Thomas DAVID</span><span class="sc-user-org">Lycée Clemenceau</span></div></div>
+          </div>
+        </div>
+
+        <!-- Session actions bar -->
+        <div class="sc-sessions-actions">
+          <button class="sc-btn-new-session" id="p-btn-new-session"><i class="ph ph-plus-circle" style="font-size:16px"></i> Nouvelle séance</button>
+          <button class="sc-btn-new-exam" id="p-btn-new-exam"><i class="ph ph-exam" style="font-size:16px"></i> Examen officiel</button>
+          <div class="sc-sessions-filter">
+            <button class="sc-filter-pill active">Toutes</button>
+            <button class="sc-filter-pill">En cours</button>
+            <button class="sc-filter-pill">Terminées</button>
+            <button class="sc-filter-pill">Examens</button>
+          </div>
+        </div>
+
+        <!-- Session list -->
+        <div class="sc-sessions-list" id="p-sessions-list">
+          <!-- Active session -->
+          <div class="sc-session-row active-row" data-session="current">
+            <div class="sc-session-row-status"><span class="sc-dot green"></span></div>
+            <div class="sc-session-row-info">
+              <span class="sc-session-row-title">Physique — Force gravitationnelle</span>
+              <span class="sc-session-row-meta">Classe 2G3 — Aujourd'hui 9:00-10:30 — 23 élèves connectés</span>
+            </div>
+            <div class="sc-session-row-badges">
+              <span class="sc-session-badge green">En cours</span>
+            </div>
+            <button class="sc-session-row-btn" id="p-btn-resume-session">Reprendre</button>
+          </div>
+
+          <!-- Past sessions -->
+          <div class="sc-session-row" data-session="past1">
+            <div class="sc-session-row-status"><span class="sc-dot grey"></span></div>
+            <div class="sc-session-row-info">
+              <span class="sc-session-row-title">Mathématiques — Équations du 2nd degré</span>
+              <span class="sc-session-row-meta">Classe 1S2 — 27/03/2025 14:00-15:30 — 28 élèves</span>
+            </div>
+            <div class="sc-session-row-badges">
+              <span class="sc-session-badge grey">Terminée</span>
+              <span class="sc-session-badge blue">12 documents</span>
+            </div>
+            <button class="sc-session-row-btn outline">Consulter</button>
+          </div>
+          <div class="sc-session-row" data-session="past2">
+            <div class="sc-session-row-status"><span class="sc-dot grey"></span></div>
+            <div class="sc-session-row-info">
+              <span class="sc-session-row-title">Physique — Lois de Newton</span>
+              <span class="sc-session-row-meta">Classe 2G3 — 25/03/2025 9:00-10:30 — 24 élèves</span>
+            </div>
+            <div class="sc-session-row-badges">
+              <span class="sc-session-badge grey">Terminée</span>
+              <span class="sc-session-badge blue">8 documents</span>
+            </div>
+            <button class="sc-session-row-btn outline">Consulter</button>
+          </div>
+          <div class="sc-session-row" data-session="past3">
+            <div class="sc-session-row-status"><span class="sc-dot grey"></span></div>
+            <div class="sc-session-row-info">
+              <span class="sc-session-row-title">SVT — Génétique et hérédité</span>
+              <span class="sc-session-row-meta">Classe TS1 — 24/03/2025 10:00-12:00 — 30 élèves</span>
+            </div>
+            <div class="sc-session-row-badges">
+              <span class="sc-session-badge grey">Terminée</span>
+              <span class="sc-session-badge blue">5 documents</span>
+            </div>
+            <button class="sc-session-row-btn outline">Consulter</button>
+          </div>
+          <div class="sc-session-row exam-row" data-session="exam1">
+            <div class="sc-session-row-status"><i class="ph ph-exam" style="font-size:14px;color:#dc2626"></i></div>
+            <div class="sc-session-row-info">
+              <span class="sc-session-row-title">Baccalauréat Blanc — Physique-Chimie</span>
+              <span class="sc-session-row-meta">Classe TG2 — 20/03/2025 8:00-12:00 — 32 élèves — Salle B204</span>
+            </div>
+            <div class="sc-session-row-badges">
+              <span class="sc-session-badge red">Examen officiel</span>
+              <span class="sc-session-badge grey">Terminé</span>
+              <span class="sc-session-badge purple">Copies envoyées</span>
+            </div>
+            <button class="sc-session-row-btn outline">Consulter</button>
+          </div>
+          <div class="sc-session-row exam-row" data-session="exam2">
+            <div class="sc-session-row-status"><i class="ph ph-exam" style="font-size:14px;color:#f59e0b"></i></div>
+            <div class="sc-session-row-info">
+              <span class="sc-session-row-title">Épreuve Commune — Mathématiques</span>
+              <span class="sc-session-row-meta">Classe 1G1 — 04/04/2025 14:00-17:00 — 35 élèves — Salle A101</span>
+            </div>
+            <div class="sc-session-row-badges">
+              <span class="sc-session-badge orange">Programmé</span>
+              <span class="sc-session-badge red">Examen officiel</span>
+            </div>
+            <button class="sc-session-row-btn">Préparer</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== OVERLAY: New Session Settings ===== -->
+      <div class="sc-newsession-overlay hidden" id="p-newsession-overlay">
+        <div class="sc-newsession-modal">
+          <div class="sc-newsession-header">
+            <h3>Nouvelle séance</h3>
+            <button class="sc-modal-close" id="p-newsession-close"><i class="ph ph-x" style="font-size:16px"></i></button>
+          </div>
+          <div class="sc-newsession-body">
+            <div class="sc-form-row">
+              <label class="sc-form-label">Matière</label>
+              <div class="sc-form-select" id="p-ns-matiere">Physique-Chimie <i class="ph ph-caret-down" style="font-size:12px"></i></div>
+            </div>
+            <div class="sc-form-row">
+              <label class="sc-form-label">Titre de la séance</label>
+              <div class="sc-form-input" id="p-ns-title">Énergie cinétique et potentielle</div>
+            </div>
+            <div class="sc-form-row">
+              <label class="sc-form-label">Classe</label>
+              <div class="sc-form-select" id="p-ns-classe">2G3 — 24 élèves <i class="ph ph-caret-down" style="font-size:12px"></i></div>
+            </div>
+            <div class="sc-form-row">
+              <label class="sc-form-label">Horaire</label>
+              <div class="sc-form-row-inline">
+                <div class="sc-form-input small">09:00</div>
+                <span style="color:#94a3b8">—</span>
+                <div class="sc-form-input small">10:30</div>
+              </div>
+            </div>
+            <div class="sc-form-row">
+              <label class="sc-form-label">Ressources pré-chargées</label>
+              <div class="sc-form-file-list">
+                <div class="sc-form-file"><i class="ph ph-file-pdf" style="color:#ef4444"></i> Cours_Energie.pdf</div>
+                <div class="sc-form-file"><i class="ph ph-file-doc" style="color:#3b82f6"></i> Exercices_Ch5.docx</div>
+                <button class="sc-form-file-add"><i class="ph ph-plus" style="font-size:12px"></i> Ajouter</button>
+              </div>
+            </div>
+            <div class="sc-form-row">
+              <label class="sc-form-label">Options</label>
+              <div class="sc-form-toggles">
+                <label class="sc-toggle-row"><span>Activer les interactions</span><div class="sc-mini-toggle on"></div></label>
+                <label class="sc-toggle-row"><span>Autoriser les messages élèves</span><div class="sc-mini-toggle on"></div></label>
+                <label class="sc-toggle-row"><span>Partage de fichiers par les élèves</span><div class="sc-mini-toggle"></div></label>
+              </div>
+            </div>
+          </div>
+          <div class="sc-newsession-footer">
+            <button class="sc-btn-cancel" id="p-newsession-cancel">Annuler</button>
+            <button class="sc-btn-launch" id="p-newsession-launch"><i class="ph ph-play" style="font-size:14px"></i> Lancer la séance</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== OVERLAY: Assignment Mode ===== -->
+      <div class="sc-assignment-overlay hidden" id="p-assignment-overlay">
+        <div class="sc-assignment-modal">
+          <div class="sc-assignment-header">
+            <div class="sc-assignment-header-icon"><i class="ph ph-notebook" style="font-size:20px;color:#8b5cf6"></i></div>
+            <div>
+              <h3>Mode Devoir</h3>
+              <span class="sc-assignment-subtitle">Configurer un exercice noté à durée limitée</span>
+            </div>
+            <button class="sc-modal-close" id="p-assignment-close"><i class="ph ph-x" style="font-size:16px"></i></button>
+          </div>
+          <div class="sc-assignment-body">
+            <div class="sc-form-row">
+              <label class="sc-form-label">Titre du devoir</label>
+              <div class="sc-form-input" id="p-asgn-title">Contrôle — Lois de Newton</div>
+            </div>
+            <div class="sc-form-row">
+              <label class="sc-form-label">Durée</label>
+              <div class="sc-form-row-inline">
+                <div class="sc-form-input small">45</div>
+                <span style="color:#94a3b8">minutes</span>
+              </div>
+            </div>
+            <div class="sc-form-section-title"><i class="ph ph-shield-check" style="font-size:14px"></i> Restrictions</div>
+            <div class="sc-form-toggles">
+              <label class="sc-toggle-row"><span>Bloquer la navigation internet</span><div class="sc-mini-toggle on"></div></label>
+              <label class="sc-toggle-row"><span>Désactiver les messages entre élèves</span><div class="sc-mini-toggle on"></div></label>
+              <label class="sc-toggle-row"><span>Verrouiller sur l'application du devoir</span><div class="sc-mini-toggle on"></div></label>
+              <label class="sc-toggle-row"><span>Désactiver le copier-coller</span><div class="sc-mini-toggle"></div></label>
+            </div>
+            <div class="sc-form-section-title"><i class="ph ph-files" style="font-size:14px"></i> Ressources autorisées</div>
+            <div class="sc-form-file-list">
+              <div class="sc-form-file"><i class="ph ph-file-pdf" style="color:#ef4444"></i> Sujet_Controle.pdf</div>
+              <div class="sc-form-file"><i class="ph ph-file-pdf" style="color:#ef4444"></i> Formulaire_Physique.pdf</div>
+              <button class="sc-form-file-add"><i class="ph ph-plus" style="font-size:12px"></i> Ajouter une ressource</button>
+            </div>
+            <div class="sc-form-section-title"><i class="ph ph-app-window" style="font-size:14px"></i> Applications autorisées</div>
+            <div class="sc-form-app-chips">
+              <span class="sc-app-chip selected"><i class="ph ph-calculator" style="font-size:12px"></i> Calculatrice</span>
+              <span class="sc-app-chip selected"><i class="ph ph-note" style="font-size:12px"></i> Notes</span>
+              <span class="sc-app-chip"><i class="ph ph-globe" style="font-size:12px"></i> Navigateur</span>
+              <span class="sc-app-chip"><i class="ph ph-book-open" style="font-size:12px"></i> Livres</span>
+            </div>
+          </div>
+          <div class="sc-assignment-footer">
+            <button class="sc-btn-cancel" id="p-assignment-cancel">Annuler</button>
+            <button class="sc-btn-launch purple" id="p-assignment-launch"><i class="ph ph-play" style="font-size:14px"></i> Distribuer le devoir</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== OVERLAY: Official Exam Mode ===== -->
+      <div class="sc-exam-overlay hidden" id="p-exam-overlay">
+        <div class="sc-exam-modal">
+          <div class="sc-exam-header">
+            <div class="sc-exam-header-icon"><i class="ph ph-shield-warning" style="font-size:22px;color:#dc2626"></i></div>
+            <div>
+              <h3>Examen Officiel</h3>
+              <span class="sc-exam-subtitle">Session préparée par l'administration — MDM</span>
+            </div>
+            <button class="sc-modal-close" id="p-exam-close"><i class="ph ph-x" style="font-size:16px"></i></button>
+          </div>
+          <div class="sc-exam-body">
+            <div class="sc-exam-info-banner">
+              <i class="ph ph-info" style="font-size:16px;color:#3b82f6"></i>
+              <span>Cette session a été configurée par l'administration du Lycée Clemenceau et déployée via SQOOL MDM. Les paramètres sont verrouillés.</span>
+            </div>
+            <div class="sc-exam-details-grid">
+              <div class="sc-exam-detail"><span class="sc-exam-detail-label">Examen</span><span class="sc-exam-detail-value" id="p-exam-name">Baccalauréat Blanc — Physique-Chimie</span></div>
+              <div class="sc-exam-detail"><span class="sc-exam-detail-label">Classe</span><span class="sc-exam-detail-value">TG2 — 32 élèves</span></div>
+              <div class="sc-exam-detail"><span class="sc-exam-detail-label">Salle</span><span class="sc-exam-detail-value">B204</span></div>
+              <div class="sc-exam-detail"><span class="sc-exam-detail-label">Durée</span><span class="sc-exam-detail-value">4h00</span></div>
+              <div class="sc-exam-detail"><span class="sc-exam-detail-label">Date</span><span class="sc-exam-detail-value">04/04/2025 — 8:00</span></div>
+              <div class="sc-exam-detail"><span class="sc-exam-detail-label">Académie</span><span class="sc-exam-detail-value">Nantes</span></div>
+            </div>
+
+            <div class="sc-form-section-title"><i class="ph ph-files" style="font-size:14px"></i> Sujets et documents fournis</div>
+            <div class="sc-form-file-list">
+              <div class="sc-form-file"><i class="ph ph-file-pdf" style="color:#ef4444"></i> Sujet_BacBlanc_PC_2025.pdf <span class="sc-file-badge">Chiffré</span></div>
+              <div class="sc-form-file"><i class="ph ph-file-pdf" style="color:#ef4444"></i> Formulaire_officiel.pdf <span class="sc-file-badge">Chiffré</span></div>
+              <div class="sc-form-file"><i class="ph ph-file-pdf" style="color:#ef4444"></i> Annexe_documents_réponse.pdf <span class="sc-file-badge">Chiffré</span></div>
+            </div>
+
+            <div class="sc-form-section-title"><i class="ph ph-shield-check" style="font-size:14px"></i> Restrictions matérielles (MDM)</div>
+            <div class="sc-exam-restrictions">
+              <div class="sc-exam-restrict locked"><i class="ph ph-wifi-slash" style="font-size:13px"></i> WiFi Internet <span class="sc-restrict-status red">Bloqué</span></div>
+              <div class="sc-exam-restrict locked"><i class="ph ph-bluetooth-slash" style="font-size:13px"></i> Bluetooth <span class="sc-restrict-status red">Désactivé</span></div>
+              <div class="sc-exam-restrict locked"><i class="ph ph-globe-x" style="font-size:13px"></i> Navigation web <span class="sc-restrict-status red">Bloquée</span></div>
+              <div class="sc-exam-restrict locked"><i class="ph ph-keyboard" style="font-size:13px"></i> Touches clavier <span class="sc-restrict-status orange">Restreint (pas de Cmd+C/V)</span></div>
+              <div class="sc-exam-restrict locked"><i class="ph ph-speaker-slash" style="font-size:13px"></i> Son <span class="sc-restrict-status red">Muet</span></div>
+              <div class="sc-exam-restrict locked"><i class="ph ph-monitor" style="font-size:13px"></i> Affichage <span class="sc-restrict-status orange">Plein écran forcé</span></div>
+              <div class="sc-exam-restrict locked"><i class="ph ph-app-window" style="font-size:13px"></i> Applications <span class="sc-restrict-status red">Aucune autorisée</span></div>
+              <div class="sc-exam-restrict locked"><i class="ph ph-funnel" style="font-size:13px"></i> URLs <span class="sc-restrict-status red">Whitelist vide</span></div>
+            </div>
+          </div>
+          <div class="sc-exam-footer">
+            <button class="sc-btn-cancel" id="p-exam-cancel">Annuler</button>
+            <button class="sc-btn-launch red" id="p-exam-launch"><i class="ph ph-shield-check" style="font-size:14px"></i> Lancer l'examen</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== OVERLAY: Exam Surveillance ===== -->
+      <div class="sc-exam-surv-overlay hidden" id="p-exam-surv-overlay">
+        <div class="sc-exam-surv-topbar">
+          <div class="sc-exam-surv-left">
+            <i class="ph ph-shield-warning" style="font-size:18px;color:#dc2626"></i>
+            <span class="sc-exam-surv-title">EXAMEN EN COURS — Bac Blanc Physique-Chimie</span>
+          </div>
+          <div class="sc-exam-surv-center">
+            <div class="sc-exam-timer" id="p-exam-timer">
+              <i class="ph ph-timer" style="font-size:14px"></i>
+              <span id="p-exam-timer-text">3:42:15</span>
+            </div>
+            <div class="sc-exam-surv-stats">
+              <span class="sc-exam-stat"><span class="sc-dot green"></span> <span id="p-exam-connected">32</span>/32 connectés</span>
+              <span class="sc-exam-stat"><span class="sc-dot blue"></span> <span id="p-exam-working">30</span> en cours</span>
+              <span class="sc-exam-stat"><span class="sc-dot orange"></span> <span id="p-exam-finished">2</span> terminés</span>
+            </div>
+          </div>
+          <div class="sc-exam-surv-right">
+            <button class="sc-exam-surv-btn" id="p-exam-collect"><i class="ph ph-download" style="font-size:14px"></i> Récupérer les copies</button>
+            <button class="sc-exam-surv-btn danger" id="p-exam-end"><i class="ph ph-stop-circle" style="font-size:14px"></i> Terminer l'examen</button>
+          </div>
+        </div>
+        <div class="sc-exam-surv-grid" id="p-exam-grid">
+          <!-- 32 exam student cards (generated or static) -->
+        </div>
+      </div>
+
+      <!-- ===== OVERLAY: Exam Recap & Copies ===== -->
+      <div class="sc-exam-recap-overlay hidden" id="p-exam-recap-overlay">
+        <div class="sc-exam-recap-modal">
+          <div class="sc-exam-recap-header">
+            <i class="ph ph-shield-check" style="font-size:20px;color:#22c55e"></i>
+            <div>
+              <h3>Examen terminé — Récapitulatif</h3>
+              <span class="sc-exam-recap-sub">Baccalauréat Blanc — Physique-Chimie — TG2</span>
+            </div>
+            <button class="sc-modal-close" id="p-exam-recap-close"><i class="ph ph-x" style="font-size:16px"></i></button>
+          </div>
+          <div class="sc-exam-recap-body">
+            <div class="sc-exam-recap-stats">
+              <div class="sc-recap-stat-card"><span class="sc-recap-stat-num" id="p-er-copies">32</span><span class="sc-recap-stat-label">Copies récupérées</span></div>
+              <div class="sc-recap-stat-card"><span class="sc-recap-stat-num" id="p-er-duration">3h48</span><span class="sc-recap-stat-label">Durée effective</span></div>
+              <div class="sc-recap-stat-card"><span class="sc-recap-stat-num" id="p-er-finished">30</span><span class="sc-recap-stat-label">Terminé dans les temps</span></div>
+              <div class="sc-recap-stat-card"><span class="sc-recap-stat-num" id="p-er-incidents">0</span><span class="sc-recap-stat-label">Incidents signalés</span></div>
+            </div>
+
+            <div class="sc-form-section-title"><i class="ph ph-files" style="font-size:14px"></i> Copies des élèves</div>
+            <div class="sc-exam-copies-list" id="p-exam-copies-list">
+              <div class="sc-exam-copy-row"><span class="sc-exam-copy-name">ALLARD Théo</span><span class="sc-exam-copy-status done">Rendu</span><span class="sc-exam-copy-time">3h42</span></div>
+              <div class="sc-exam-copy-row"><span class="sc-exam-copy-name">BOUCHAMI Aya</span><span class="sc-exam-copy-status done">Rendu</span><span class="sc-exam-copy-time">3h38</span></div>
+              <div class="sc-exam-copy-row"><span class="sc-exam-copy-name">CHEN Wei</span><span class="sc-exam-copy-status done">Rendu</span><span class="sc-exam-copy-time">3h48</span></div>
+              <div class="sc-exam-copy-row"><span class="sc-exam-copy-name">DUPONT Chloé</span><span class="sc-exam-copy-status done">Rendu</span><span class="sc-exam-copy-time">3h15</span></div>
+              <div class="sc-exam-copy-row"><span class="sc-exam-copy-name">FAURE Lucas</span><span class="sc-exam-copy-status done">Rendu</span><span class="sc-exam-copy-time">3h47</span></div>
+              <div class="sc-exam-copy-row"><span class="sc-exam-copy-name">GARNIER Nolan</span><span class="sc-exam-copy-status done">Rendu</span><span class="sc-exam-copy-time">3h44</span></div>
+              <div class="sc-exam-copy-row"><span class="sc-exam-copy-name">MARTIN Léa</span><span class="sc-exam-copy-status late">Hors temps</span><span class="sc-exam-copy-time">4h02</span></div>
+              <div class="sc-exam-copy-row"><span class="sc-exam-copy-name">SINGH Ravi</span><span class="sc-exam-copy-status done">Rendu</span><span class="sc-exam-copy-time">3h30</span></div>
+            </div>
+
+            <div class="sc-exam-recap-actions">
+              <button class="sc-exam-recap-action" id="p-er-download"><i class="ph ph-download" style="font-size:16px"></i> Télécharger toutes les copies (ZIP)</button>
+              <button class="sc-exam-recap-action" id="p-er-drive"><i class="ph ph-google-drive-logo" style="font-size:16px"></i> Sauvegarder sur Google Drive</button>
+              <button class="sc-exam-recap-action" id="p-er-email"><i class="ph ph-envelope" style="font-size:16px"></i> Envoyer par email aux autorités</button>
+              <button class="sc-exam-recap-action" id="p-er-correct"><i class="ph ph-pencil-line" style="font-size:16px"></i> Ouvrir le mode correction</button>
+            </div>
+
+            <!-- Drive notification -->
+            <div class="sc-exam-drive-notif hidden" id="p-er-drive-notif">
+              <i class="ph ph-check-circle" style="font-size:16px;color:#22c55e"></i>
+              <span>32 copies sauvegardées dans Google Drive → <strong>Examens / Bac Blanc PC 2025 / Copies</strong></span>
+            </div>
+
+            <!-- Email draft -->
+            <div class="sc-exam-email-draft hidden" id="p-er-email-draft">
+              <div class="sc-email-header">
+                <span class="sc-email-label">À :</span>
+                <span class="sc-email-value">examens@ac-nantes.fr</span>
+              </div>
+              <div class="sc-email-header">
+                <span class="sc-email-label">Objet :</span>
+                <span class="sc-email-value">Copies Bac Blanc PC — TG2 — Lycée Clemenceau</span>
+              </div>
+              <div class="sc-email-body-preview">
+                Veuillez trouver ci-joint les 32 copies numérisées du Baccalauréat Blanc de Physique-Chimie, session du 04/04/2025...
+              </div>
+              <div class="sc-email-attach">
+                <i class="ph ph-paperclip" style="font-size:13px"></i> Copies_BacBlanc_PC_TG2.zip (32 fichiers)
+              </div>
+              <button class="sc-btn-launch" id="p-er-email-send" style="margin-top:8px;font-size:12px;padding:6px 16px"><i class="ph ph-paper-plane-tilt" style="font-size:12px"></i> Envoyer</button>
+            </div>
+          </div>
         </div>
       </div>
 
