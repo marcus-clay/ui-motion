@@ -5,6 +5,9 @@
 (function () {
   'use strict';
 
+  // Skip homepage animations in embed mode
+  if (new URLSearchParams(window.location.search).get('embed') === '1') return;
+
   // ============================================================
   // Responsive Scaling — fit iPad frame to any viewport
   // ============================================================

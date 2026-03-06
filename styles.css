@@ -3717,3 +3717,35 @@ body {
   .sc-narration.collapsed { margin-right: -240px; }
   .sc-narration-body { min-width: 240px; }
 }
+
+/* ============================================================
+   EMBED MODE — Clean iframe display, no chrome
+   Activated via body.embed-mode (set by ?embed=1 query param)
+   ============================================================ */
+body.embed-mode {
+  overflow: hidden;
+}
+body.embed-mode #section-sqool,
+body.embed-mode canvas#webgl-canvas {
+  display: none !important;
+}
+body.embed-mode .proto-toc {
+  display: none !important;
+}
+body.embed-mode .proto-section {
+  min-height: 100vh;
+}
+body.embed-mode .proto-stage {
+  margin-left: 0 !important;
+  width: 100% !important;
+}
+body.embed-mode .proto-info-header {
+  display: none !important;
+}
+body.embed-mode .sc-narration,
+body.embed-mode .sc-narration-expand {
+  display: none !important;
+}
+body.embed-mode .proto-steps-wrapper {
+  display: none !important;
+}

@@ -4460,7 +4460,27 @@
     if (currentProto) navigateTo(currentProto);
   });
 
-  // Auto-start first scenario
-  navigateTo('t1');
+  // --- Hash routing & embed mode ---
+  const params = new URLSearchParams(window.location.search);
+  const isEmbed = params.get('embed') === '1';
+
+  if (isEmbed) {
+    document.body.classList.add('embed-mode');
+  }
+
+  // Read hash on load (e.g. #t3, #sc1)
+  function getHashProto() {
+    const hash = window.location.hash.replace('#', '').toLowerCase();
+    return protoMap[hash] ? hash : null;
+  }
+
+  const initialProto = getHashProto() || 't1';
+  navigateTo(initialProto);
+
+  // Listen for hash changes (allows parent to change prototype)
+  window.addEventListener('hashchange', () => {
+    const id = getHashProto();
+    if (id) navigateTo(id);
+  });
 
 })();
