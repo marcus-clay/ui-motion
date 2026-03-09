@@ -4698,6 +4698,9 @@
 
   if (isEmbed) {
     document.body.classList.add('embed-mode');
+    if (params.get('card') === '1') {
+      document.body.classList.add('show-card');
+    }
   }
 
   // Speed control (e.g. ?speed=0.8)

@@ -3906,6 +3906,9 @@ body.embed-mode .proto-info-header {
 body.embed-mode .proto-narration-card {
   display: none !important;
 }
+body.embed-mode.show-card .proto-narration-card {
+  display: block !important;
+}
 body.embed-mode .proto-steps-wrapper {
   display: none !important;
 }
