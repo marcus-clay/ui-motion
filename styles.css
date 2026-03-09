@@ -513,7 +513,7 @@ body {
 
 /* --- Proto info header (left-aligned, above the screen) --- */
 .proto-info-header {
-  display: flex;
+  display: none;
   align-items: flex-start;
   justify-content: space-between;
   padding: 16px 24px 10px;
@@ -725,6 +725,7 @@ body {
 .proto-nc-btn:hover { background: rgba(0,0,0,.04); color: #1e293b; }
 .proto-nc-btn:active { transform: scale(.92); }
 .proto-nc-btn:disabled { opacity: .3; pointer-events: none; }
+.proto-nc-btn.hidden { display: none; }
 .proto-nc-btn.active { background: #007aff; color: #fff; }
 
 .proto-nc-btn-desc {

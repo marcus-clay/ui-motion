@@ -3176,11 +3176,14 @@
   }
 
   function hideNarration() {
-    if (!ncCard) return;
     narrationHasContent = false;
-    ncCard.classList.add('hidden');
     if (ncSteps) ncSteps.innerHTML = '';
+    if (ncBody) ncBody.classList.add('hidden');
+    if (ncToggleDesc) { ncToggleDesc.classList.remove('open'); ncToggleDesc.classList.add('hidden'); }
+    if (ncPrev) ncPrev.classList.add('hidden');
+    if (ncNext) ncNext.classList.add('hidden');
     isPaused = false;
+    ncDescOpen = false;
     updatePlayPauseUI();
     scenarioSteps = [];
     scenarioStepCallbacks = [];
@@ -4390,12 +4393,35 @@
 
   function showProtoTitle(id) {
     const info = protoTitles[id];
-    if (info && titleEl && subtitleEl) {
-      if (infoBadge) infoBadge.textContent = id.toUpperCase();
-      titleEl.textContent = info.title;
-      subtitleEl.textContent = info.subtitle;
-      if (infoHeader) gsap.fromTo(infoHeader, { opacity: 0, y: -6 }, { opacity: 1, y: 0, duration: 0.3, ease: smooth });
+    if (!info) return;
+
+    // Update old header (kept as fallback)
+    if (titleEl) titleEl.textContent = info.title;
+    if (subtitleEl) subtitleEl.textContent = info.subtitle;
+    if (infoBadge) infoBadge.textContent = id.toUpperCase();
+
+    // Show narration card with title + controls for ALL prototypes
+    if (ncCard) {
+      ncLabel.textContent = id.toUpperCase();
+      ncTitle.textContent = info.title;
+      // Hide description area and steps for non-scenario prototypes
+      if (!id.startsWith('sc')) {
+        ncBody.classList.add('hidden');
+        ncSteps.innerHTML = '';
+        ncToggleDesc.classList.add('hidden');
+        ncPrev.classList.add('hidden');
+        ncNext.classList.add('hidden');
+      } else {
+        ncToggleDesc.classList.remove('hidden');
+        ncPrev.classList.remove('hidden');
+        ncNext.classList.remove('hidden');
+      }
+      ncCard.classList.remove('hidden');
+      gsap.fromTo(ncCard, { opacity: 0, y: -6 }, { opacity: 1, y: 0, duration: 0.3, ease: smooth });
     }
+
+    // Hide old header since card replaces it
+    if (infoHeader) infoHeader.style.display = 'none';
   }
 
   function navigateTo(id) {
