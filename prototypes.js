@@ -3047,54 +3047,64 @@
   }
 
   // ============================================================
-  // SCENARIO NARRATION SYSTEM
+  // SCENARIO NARRATION SYSTEM (card above viewport)
   // ============================================================
 
-  const narrationPanel = document.getElementById('sc-narration');
-  const narrationToggle = document.getElementById('sc-narration-toggle');
-  const narrationExpand = document.getElementById('sc-narration-expand');
+  const ncCard = document.getElementById('proto-narration-card');
+  const ncLabel = document.getElementById('proto-nc-label');
+  const ncTitle = document.getElementById('proto-nc-title');
+  const ncSteps = document.getElementById('proto-nc-steps');
+  const ncBody = document.getElementById('proto-nc-body');
+  const ncSituation = document.getElementById('proto-nc-situation');
+  const ncCharacters = document.getElementById('proto-nc-characters');
+  const ncUx = document.getElementById('proto-nc-ux');
+  const ncUxText = document.getElementById('proto-nc-ux-text');
+  const ncPrev = document.getElementById('proto-nc-prev');
+  const ncNext = document.getElementById('proto-nc-next');
+  const ncPlayPause = document.getElementById('proto-nc-playpause');
+  const ncPlayIcon = document.getElementById('proto-nc-play-icon');
+  const ncRestart = document.getElementById('proto-nc-restart');
+  const ncFullscreen = document.getElementById('proto-nc-fullscreen');
+  const ncToggleDesc = document.getElementById('proto-nc-toggle-desc');
+  const ncChevron = document.getElementById('proto-nc-chevron');
+
+  // Keep references to old elements for backward compat
   const stepsBar = document.getElementById('proto-steps-bar');
   const stepsWrapper = document.getElementById('proto-steps-wrapper');
-  const navPrev = document.getElementById('proto-nav-prev');
-  const navNext = document.getElementById('proto-nav-next');
-  const playPauseBtn = document.getElementById('proto-play-pause');
-  const playIcon = document.getElementById('proto-play-icon');
   const infoBadge = document.getElementById('proto-info-badge');
+
   let isPaused = false;
   let narrationHasContent = false;
   let scenarioSteps = [];
   let scenarioStepCallbacks = [];
   let currentStepIdx = -1;
   let isManualNav = false;
+  let ncDescOpen = false;
 
   function showNarration(config) {
-    if (!narrationPanel) return;
+    if (!ncCard) return;
     narrationHasContent = true;
     scenarioSteps = config.steps || [];
-    narrationPanel.classList.remove('hidden');
-    narrationPanel.classList.remove('collapsed');
-    narrationPanel.classList.add('open');
 
-    // Populate sidebar (context + characters + UX only)
-    document.getElementById('sc-narration-label').textContent = config.label;
-    document.getElementById('sc-narration-title').textContent = config.title;
-    document.getElementById('sc-narration-situation').textContent = config.situation;
+    // Populate card
+    ncLabel.textContent = config.label;
+    ncTitle.textContent = config.title;
+    ncSituation.textContent = config.situation;
 
     // Characters
-    const charsEl = document.getElementById('sc-narration-characters');
-    charsEl.innerHTML = config.characters.map(c =>
-      '<div class="sc-narration-char">' +
-        '<div class="sc-narration-char-avatar" style="background:' + c.color + '">' + c.initials + '</div>' +
-        '<div class="sc-narration-char-info">' +
-          '<span class="sc-narration-char-name">' + c.name + '</span>' +
-          '<span class="sc-narration-char-role">' + c.role + '</span>' +
+    ncCharacters.innerHTML = config.characters.map(c =>
+      '<div class="proto-nc-char">' +
+        '<div class="proto-nc-char-avatar" style="background:' + c.color + '">' + c.initials + '</div>' +
+        '<div class="proto-nc-char-info">' +
+          '<span class="proto-nc-char-name">' + c.name + '</span>' +
+          '<span class="proto-nc-char-role">' + c.role + '</span>' +
         '</div>' +
       '</div>'
     ).join('');
 
-    // Horizontal step bar
-    if (stepsBar && scenarioSteps.length > 0) {
-      stepsBar.innerHTML = scenarioSteps.map((s, i) => {
+    // Step bar
+    if (ncSteps && scenarioSteps.length > 0) {
+      ncSteps.innerHTML = scenarioSteps.map((s, i) => {
         const connector = i < scenarioSteps.length - 1 ? '<div class="proto-step-connector"></div>' : '';
         return '<div class="proto-step" id="proto-step-' + i + '" data-step="' + i + '">' +
           '<div class="proto-step-num">' + (i + 1) + '</div>' +
@@ -3102,87 +3112,62 @@
           '<span class="proto-step-label">' + s.action + '</span>' +
         '</div>' + connector;
       }).join('');
-      if (stepsWrapper) stepsWrapper.classList.remove('hidden');
 
-      // Click handlers on steps
-      stepsBar.querySelectorAll('.proto-step').forEach(step => {
+      ncSteps.querySelectorAll('.proto-step').forEach(step => {
         step.addEventListener('click', () => {
-          const idx = parseInt(step.dataset.step);
-          goToStep(idx);
+          goToStep(parseInt(step.dataset.step));
         });
       });
-
-      // Reset play/pause state
-      isPaused = false;
-      updatePlayPauseUI();
-    } else {
-      if (stepsWrapper) stepsWrapper.classList.add('hidden');
-      if (stepsBar) stepsBar.innerHTML = '';
+    } else if (ncSteps) {
+      ncSteps.innerHTML = '';
     }
 
-    // Show sidebar
-    openNarrationSidebar();
-  }
+    // Reset state
+    isPaused = false;
+    ncDescOpen = false;
+    ncBody.classList.add('hidden');
+    ncToggleDesc.classList.remove('open');
+    updatePlayPauseUI();
 
-  function openNarrationSidebar() {
-    if (!narrationPanel) return;
-    narrationPanel.classList.remove('hidden', 'collapsed');
-  }
-
-  function collapseNarrationSidebar() {
-    if (!narrationPanel) return;
-    narrationPanel.classList.add('collapsed');
-    if (narrationExpand && narrationHasContent) narrationExpand.classList.remove('hidden');
+    // Show card
+    ncCard.classList.remove('hidden');
   }
 
   function setNarrationStep(idx, uxText) {
     currentStepIdx = idx;
 
-    // Add label to current timeline for seek navigation
     if (currentTL) {
       currentTL.addLabel('step-' + idx);
     }
 
-    // Scroll step into view within narration body
-    const activeStep = document.getElementById('sc-step-' + idx);
-    if (activeStep) {
-      const body = narrationPanel.querySelector('.sc-narration-body');
-      if (body) activeStep.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-
-    // Update horizontal step bar
-    if (stepsBar) {
-      const steps = stepsBar.querySelectorAll('.proto-step');
+    // Update step bar
+    if (ncSteps) {
+      const steps = ncSteps.querySelectorAll('.proto-step');
       steps.forEach((s, i) => {
         s.classList.remove('active', 'done');
         if (i < idx) s.classList.add('done');
         if (i === idx) s.classList.add('active');
       });
-      // Scroll active step into view
       const activeStep = document.getElementById('proto-step-' + idx);
       if (activeStep) activeStep.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }
 
-    // Update nav arrows state
-    if (navPrev) navPrev.disabled = (idx <= 0 || scenarioSteps.length === 0);
-    if (navNext) navNext.disabled = (idx >= scenarioSteps.length - 1 || scenarioSteps.length === 0);
+    // Update nav arrows
+    if (ncPrev) ncPrev.disabled = (idx <= 0 || scenarioSteps.length === 0);
+    if (ncNext) ncNext.disabled = (idx >= scenarioSteps.length - 1 || scenarioSteps.length === 0);
 
-    // UX guideline in sidebar
-    const uxPanel = document.getElementById('sc-narration-ux');
-    const uxTextEl = document.getElementById('sc-narration-ux-text');
+    // UX guideline
     if (uxText) {
-      uxPanel.classList.remove('hidden');
-      uxTextEl.textContent = uxText;
-      gsap.fromTo(uxPanel, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: smooth });
+      ncUx.classList.remove('hidden');
+      ncUxText.textContent = uxText;
+      gsap.fromTo(ncUx, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: smooth });
     } else {
-      uxPanel.classList.add('hidden');
+      ncUx.classList.add('hidden');
     }
   }
 
-  // Manual step navigation — pauses timeline, seeks to step position
   function goToStep(idx) {
     if (!currentTL || idx < 0 || idx >= scenarioSteps.length) return;
-    // Find the step label in the timeline
     const label = 'step-' + idx;
     if (currentTL.labels && currentTL.labels[label] !== undefined) {
       currentTL.seek(label);
@@ -3191,59 +3176,75 @@
   }
 
   function hideNarration() {
-    if (!narrationPanel) return;
+    if (!ncCard) return;
     narrationHasContent = false;
-    narrationPanel.classList.remove('open');
-    narrationPanel.classList.add('collapsed');
-    if (narrationExpand) narrationExpand.classList.add('hidden');
-    if (stepsWrapper) stepsWrapper.classList.add('hidden');
-    if (stepsBar) stepsBar.innerHTML = '';
+    ncCard.classList.add('hidden');
+    if (ncSteps) ncSteps.innerHTML = '';
     isPaused = false;
     updatePlayPauseUI();
     scenarioSteps = [];
     scenarioStepCallbacks = [];
     currentStepIdx = -1;
-    setTimeout(() => narrationPanel.classList.add('hidden'), 400);
   }
 
-  // Toggle button handlers
-  if (narrationToggle) {
-    narrationToggle.addEventListener('click', () => collapseNarrationSidebar());
-  }
-  if (narrationExpand) {
-    narrationExpand.addEventListener('click', () => openNarrationSidebar());
+  // Play/Pause
+  function updatePlayPauseUI() {
+    if (!ncPlayIcon) return;
+    ncPlayIcon.className = isPaused ? 'ph ph-play' : 'ph ph-pause';
+    if (ncPlayPause) ncPlayPause.title = isPaused ? 'Reprendre' : 'Pause';
   }
 
-  // Navigation arrow handlers
-  if (navPrev) {
-    navPrev.addEventListener('click', () => {
+  if (ncPlayPause) {
+    ncPlayPause.addEventListener('click', () => {
+      if (!currentTL) return;
+      isPaused = !isPaused;
+      if (isPaused) currentTL.pause();
+      else currentTL.play();
+      updatePlayPauseUI();
+    });
+  }
+
+  // Restart
+  if (ncRestart) {
+    ncRestart.addEventListener('click', () => {
+      if (!currentTL) return;
+      currentTL.restart();
+      isPaused = false;
+      updatePlayPauseUI();
+    });
+  }
+
+  // Prev / Next
+  if (ncPrev) {
+    ncPrev.addEventListener('click', () => {
       if (currentStepIdx > 0) goToStep(currentStepIdx - 1);
     });
   }
-  if (navNext) {
-    navNext.addEventListener('click', () => {
+  if (ncNext) {
+    ncNext.addEventListener('click', () => {
       if (currentStepIdx < scenarioSteps.length - 1) goToStep(currentStepIdx + 1);
     });
   }
 
-  // Play/Pause toggle
-  function updatePlayPauseUI() {
-    if (!playPauseBtn || !playIcon) return;
-    playIcon.className = isPaused ? 'ph ph-play' : 'ph ph-pause';
-    playPauseBtn.classList.toggle('paused', isPaused);
-    playPauseBtn.title = isPaused ? 'Reprendre' : 'Pause';
+  // Toggle description
+  if (ncToggleDesc) {
+    ncToggleDesc.addEventListener('click', () => {
+      ncDescOpen = !ncDescOpen;
+      ncBody.classList.toggle('hidden', !ncDescOpen);
+      ncToggleDesc.classList.toggle('open', ncDescOpen);
+    });
   }
 
-  if (playPauseBtn) {
-    playPauseBtn.addEventListener('click', () => {
-      if (!currentTL) return;
-      isPaused = !isPaused;
-      if (isPaused) {
-        currentTL.pause();
+  // Fullscreen
+  if (ncFullscreen) {
+    ncFullscreen.addEventListener('click', () => {
+      const viewport = document.getElementById('proto-viewport');
+      if (!viewport) return;
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
       } else {
-        currentTL.play();
+        viewport.requestFullscreen().catch(() => {});
       }
-      updatePlayPauseUI();
     });
   }
 

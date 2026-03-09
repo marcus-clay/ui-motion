@@ -283,6 +283,47 @@
           <div class="proto-steps-bar" id="proto-steps-bar"></div>
         </div>
 
+        <!-- Narration card (above viewport, for scenarios) -->
+        <div class="proto-narration-card hidden" id="proto-narration-card">
+          <div class="proto-nc-header">
+            <div class="proto-nc-title-area">
+              <span class="proto-nc-label" id="proto-nc-label"></span>
+              <span class="proto-nc-title" id="proto-nc-title"></span>
+            </div>
+            <div class="proto-nc-controls">
+              <button class="proto-nc-btn" id="proto-nc-prev" title="Étape précédente">
+                <i class="ph ph-caret-left" style="font-size:14px"></i>
+              </button>
+              <button class="proto-nc-btn" id="proto-nc-playpause" title="Lecture / Pause">
+                <i class="ph ph-pause" id="proto-nc-play-icon" style="font-size:14px"></i>
+              </button>
+              <button class="proto-nc-btn" id="proto-nc-next" title="Étape suivante">
+                <i class="ph ph-caret-right" style="font-size:14px"></i>
+              </button>
+              <button class="proto-nc-btn" id="proto-nc-restart" title="Rejouer">
+                <i class="ph ph-arrow-counter-clockwise" style="font-size:14px"></i>
+              </button>
+              <span class="proto-nc-sep"></span>
+              <button class="proto-nc-btn" id="proto-nc-fullscreen" title="Plein écran">
+                <i class="ph ph-corners-out" style="font-size:14px"></i>
+              </button>
+              <button class="proto-nc-btn proto-nc-btn-desc" id="proto-nc-toggle-desc" title="Afficher la description">
+                <i class="ph ph-caret-down proto-nc-chevron" id="proto-nc-chevron" style="font-size:12px"></i>
+                <span>Description</span>
+              </button>
+            </div>
+          </div>
+          <div class="proto-nc-steps" id="proto-nc-steps"></div>
+          <div class="proto-nc-body hidden" id="proto-nc-body">
+            <p class="proto-nc-situation" id="proto-nc-situation"></p>
+            <div class="proto-nc-characters" id="proto-nc-characters"></div>
+            <div class="proto-nc-ux hidden" id="proto-nc-ux">
+              <div class="proto-nc-ux-label"><i class="ph ph-lightbulb" style="font-size:12px"></i> UX Guideline</div>
+              <p class="proto-nc-ux-text" id="proto-nc-ux-text"></p>
+            </div>
+          </div>
+        </div>
+
         <!-- Screen viewport -->
         <div class="proto-viewport" id="proto-viewport">
 
@@ -1525,60 +1566,8 @@
         </div><!-- /.proto-viewport -->
       </div><!-- /.proto-stage-content -->
 
-      <!-- Detail sidebar (collapsible, UX guidelines + interaction details) -->
-      <div class="sc-narration hidden" id="sc-narration">
-        <button class="sc-narration-toggle" id="sc-narration-toggle" title="Masquer le panneau">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-        </button>
-        <div class="sc-narration-body" id="sc-narration-body">
-          <div class="sc-narration-header">
-            <span class="sc-narration-label" id="sc-narration-label" style="display:none"></span>
-            <span class="sc-narration-title" id="sc-narration-title" style="display:none"></span>
-          </div>
-          <div class="sc-narration-section-title"><i class="ph ph-info" style="font-size:12px"></i> Contexte</div>
-          <div class="sc-narration-context" id="sc-narration-context">
-            <p class="sc-narration-situation" id="sc-narration-situation"></p>
-          </div>
-          <div class="sc-narration-section-title"><i class="ph ph-users" style="font-size:12px"></i> Personnages</div>
-          <div class="sc-narration-characters" id="sc-narration-characters"></div>
-          <div class="sc-narration-ux hidden" id="sc-narration-ux">
-            <div class="sc-narration-ux-label"><i class="ph ph-lightbulb" style="font-size:12px"></i> UX Insight</div>
-            <p class="sc-narration-ux-text" id="sc-narration-ux-text"></p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Collapsed sidebar toggle -->
-      <button class="sc-narration-expand hidden" id="sc-narration-expand" title="Afficher le panneau">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
-        <span>Détails</span>
-      </button>
-
     </div>
 
-    <!-- Scenario narration side panel (collapsible, shown during scenarios) -->
-    <div class="sc-narration collapsed" id="sc-narration">
-      <button class="sc-narration-toggle" id="sc-narration-toggle">
-        <i class="ph ph-book-open" style="font-size:14px"></i>
-        <span class="sc-narration-toggle-label">Narration</span>
-        <i class="ph ph-caret-right sc-narration-chevron" style="font-size:12px"></i>
-      </button>
-      <div class="sc-narration-body">
-        <div class="sc-narration-header">
-          <span class="sc-narration-label" id="sc-narration-label">Scénario 1</span>
-          <span class="sc-narration-title" id="sc-narration-title">Démarrer et distribuer</span>
-        </div>
-        <div class="sc-narration-context" id="sc-narration-context">
-          <p class="sc-narration-situation" id="sc-narration-situation"></p>
-        </div>
-        <div class="sc-narration-characters" id="sc-narration-characters"></div>
-        <div class="sc-narration-steps" id="sc-narration-steps"></div>
-        <div class="sc-narration-ux hidden" id="sc-narration-ux">
-          <div class="sc-narration-ux-label"><i class="ph ph-lightbulb" style="font-size:12px"></i> UX Guideline</div>
-          <p class="sc-narration-ux-text" id="sc-narration-ux-text"></p>
-        </div>
-      </div>
-    </div>
 
   </section>
 
