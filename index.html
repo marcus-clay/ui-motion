@@ -134,12 +134,13 @@
         <!-- Narration card (above viewport, for scenarios) -->
         <div class="proto-narration-card hidden" id="proto-narration-card">
           <div class="proto-nc-header">
-            <div class="proto-nc-title-area">
+            <div class="proto-nc-title-area" id="proto-nc-title-area">
               <div class="proto-nc-title-row">
                 <span class="proto-nc-label" id="proto-nc-label"></span>
                 <span class="proto-nc-title" id="proto-nc-title"></span>
               </div>
               <p class="proto-nc-subtitle" id="proto-nc-subtitle"></p>
+              <span class="proto-nc-expand-hint"><i class="ph ph-caret-down proto-nc-expand-chevron"></i> Détails</span>
             </div>
             <div class="proto-nc-controls">
               <button class="proto-nc-btn" id="proto-nc-prev" title="Étape précédente">
@@ -158,21 +159,10 @@
               <button class="proto-nc-btn" id="proto-nc-fullscreen" title="Plein écran">
                 <i class="ph ph-corners-out" style="font-size:14px"></i>
               </button>
-              <button class="proto-nc-btn proto-nc-btn-desc" id="proto-nc-toggle-desc" title="Afficher la description">
-                <i class="ph ph-caret-down proto-nc-chevron" id="proto-nc-chevron" style="font-size:12px"></i>
-                <span>Description</span>
-              </button>
             </div>
           </div>
           <div class="proto-nc-steps" id="proto-nc-steps"></div>
-          <div class="proto-nc-body hidden" id="proto-nc-body">
-            <p class="proto-nc-situation" id="proto-nc-situation"></p>
-            <div class="proto-nc-characters" id="proto-nc-characters"></div>
-            <div class="proto-nc-ux hidden" id="proto-nc-ux">
-              <div class="proto-nc-ux-label"><i class="ph ph-lightbulb" style="font-size:12px"></i> UX Guideline</div>
-              <p class="proto-nc-ux-text" id="proto-nc-ux-text"></p>
-            </div>
-          </div>
+          <div class="proto-nc-body hidden" id="proto-nc-body"></div>
         </div>
 
         <!-- Screen viewport -->

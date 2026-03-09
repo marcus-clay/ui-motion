@@ -3047,31 +3047,22 @@
   }
 
   // ============================================================
-  // SCENARIO NARRATION SYSTEM (card above viewport)
+  // NARRATION CARD SYSTEM (above viewport, for all prototypes)
   // ============================================================
 
   const ncCard = document.getElementById('proto-narration-card');
   const ncLabel = document.getElementById('proto-nc-label');
   const ncTitle = document.getElementById('proto-nc-title');
   const ncSubtitle = document.getElementById('proto-nc-subtitle');
+  const ncTitleArea = document.getElementById('proto-nc-title-area');
   const ncSteps = document.getElementById('proto-nc-steps');
   const ncBody = document.getElementById('proto-nc-body');
-  const ncSituation = document.getElementById('proto-nc-situation');
-  const ncCharacters = document.getElementById('proto-nc-characters');
-  const ncUx = document.getElementById('proto-nc-ux');
-  const ncUxText = document.getElementById('proto-nc-ux-text');
   const ncPrev = document.getElementById('proto-nc-prev');
   const ncNext = document.getElementById('proto-nc-next');
   const ncPlayPause = document.getElementById('proto-nc-playpause');
   const ncPlayIcon = document.getElementById('proto-nc-play-icon');
   const ncRestart = document.getElementById('proto-nc-restart');
   const ncFullscreen = document.getElementById('proto-nc-fullscreen');
-  const ncToggleDesc = document.getElementById('proto-nc-toggle-desc');
-  const ncChevron = document.getElementById('proto-nc-chevron');
-
-  // Keep references to old elements for backward compat
-  const stepsBar = document.getElementById('proto-steps-bar');
-  const stepsWrapper = document.getElementById('proto-steps-wrapper');
   const infoBadge = document.getElementById('proto-info-badge');
 
   let isPaused = false;
@@ -3082,28 +3073,109 @@
   let isManualNav = false;
   let ncDescOpen = false;
 
+  // Build the expanded body HTML for a prototype
+  function buildProtoBody(id, info) {
+    let html = '';
+
+    // Interaction description
+    if (info.interaction) {
+      html += '<div class="proto-nc-block">' +
+        '<div class="proto-nc-block-label"><i class="ph ph-cursor-click" style="font-size:11px"></i> Interaction</div>' +
+        '<p class="proto-nc-block-text">' + info.interaction + '</p>' +
+      '</div>';
+    }
+
+    // Conceptual approach
+    if (info.concept) {
+      html += '<div class="proto-nc-block">' +
+        '<div class="proto-nc-block-label"><i class="ph ph-lightbulb" style="font-size:11px"></i> Parti pris</div>' +
+        '<p class="proto-nc-block-text">' + info.concept + '</p>' +
+      '</div>';
+    }
+
+    // UX Strategy
+    if (info.uxStrategy) {
+      html += '<div class="proto-nc-block">' +
+        '<div class="proto-nc-block-label"><i class="ph ph-compass" style="font-size:11px"></i> Stratégie UX</div>' +
+        '<p class="proto-nc-block-text">' + info.uxStrategy + '</p>' +
+      '</div>';
+    }
+
+    // Outcome
+    if (info.outcome) {
+      html += '<div class="proto-nc-block">' +
+        '<div class="proto-nc-block-label"><i class="ph ph-target" style="font-size:11px"></i> Outcome</div>' +
+        '<p class="proto-nc-block-text">' + info.outcome + '</p>' +
+      '</div>';
+    }
+
+    return html;
+  }
+
+  // Build expanded body for a scenario (includes steps, characters, UX)
+  function buildScenarioBody(config) {
+    let html = '';
+
+    // Situation
+    if (config.situation) {
+      html += '<div class="proto-nc-block">' +
+        '<div class="proto-nc-block-label"><i class="ph ph-info" style="font-size:11px"></i> Contexte</div>' +
+        '<p class="proto-nc-block-text">' + config.situation + '</p>' +
+      '</div>';
+    }
+
+    // Characters
+    if (config.characters && config.characters.length) {
+      html += '<div class="proto-nc-block">' +
+        '<div class="proto-nc-block-label"><i class="ph ph-users" style="font-size:11px"></i> Personnages</div>' +
+        '<div class="proto-nc-characters">' +
+          config.characters.map(c =>
+            '<div class="proto-nc-char">' +
+              '<div class="proto-nc-char-avatar" style="background:' + c.color + '">' + c.initials + '</div>' +
+              '<div class="proto-nc-char-info">' +
+                '<span class="proto-nc-char-name">' + c.name + '</span>' +
+                '<span class="proto-nc-char-role">' + c.role + '</span>' +
+              '</div>' +
+            '</div>'
+          ).join('') +
+        '</div>' +
+      '</div>';
+    }
+
+    // Scenario steps
+    if (config.steps && config.steps.length) {
+      html += '<div class="proto-nc-block">' +
+        '<div class="proto-nc-block-label"><i class="ph ph-list-numbers" style="font-size:11px"></i> Étapes du scénario</div>' +
+        '<div class="proto-nc-scenario-steps">' +
+          config.steps.map((s, i) =>
+            '<div class="proto-nc-scenario-step">' +
+              '<div class="proto-nc-step-num">' + (i + 1) + '</div>' +
+              '<div class="proto-nc-step-content">' +
+                '<span class="proto-nc-step-who ' + s.who + '">' + (s.who === 'teacher' ? 'Enseignant' : 'Élève') + '</span>' +
+                '<span class="proto-nc-step-action">' + s.action + '</span>' +
+                (s.detail ? '<span class="proto-nc-step-detail">' + s.detail + '</span>' : '') +
+              '</div>' +
+            '</div>'
+          ).join('') +
+        '</div>' +
+      '</div>';
+    }
+
+    // UX guideline placeholder (updated live by setNarrationStep)
+    html += '<div class="proto-nc-ux hidden" id="proto-nc-ux">' +
+      '<div class="proto-nc-ux-label"><i class="ph ph-lightbulb" style="font-size:12px"></i> UX Guideline</div>' +
+      '<p class="proto-nc-ux-text" id="proto-nc-ux-text"></p>' +
+    '</div>';
+
+    return html;
+  }
+
   function showNarration(config) {
     if (!ncCard) return;
     narrationHasContent = true;
     scenarioSteps = config.steps || [];
 
-    // Populate card
-    ncLabel.textContent = config.label;
-    ncTitle.textContent = config.title;
-    ncSituation.textContent = config.situation;
-
-    // Characters
-    ncCharacters.innerHTML = config.characters.map(c =>
-      '<div class="proto-nc-char">' +
-        '<div class="proto-nc-char-avatar" style="background:' + c.color + '">' + c.initials + '</div>' +
-        '<div class="proto-nc-char-info">' +
-          '<span class="proto-nc-char-name">' + c.name + '</span>' +
-          '<span class="proto-nc-char-role">' + c.role + '</span>' +
-        '</div>' +
-      '</div>'
-    ).join('');
-
-    // Step bar
+    // Step bar (horizontal)
     if (ncSteps && scenarioSteps.length > 0) {
       ncSteps.innerHTML = scenarioSteps.map((s, i) => {
         const connector = i < scenarioSteps.length - 1 ? '<div class="proto-step-connector"></div>' : '';
@@ -3115,23 +3187,30 @@
       }).join('');
 
       ncSteps.querySelectorAll('.proto-step').forEach(step => {
-        step.addEventListener('click', () => {
-          goToStep(parseInt(step.dataset.step));
-        });
+        step.addEventListener('click', () => goToStep(parseInt(step.dataset.step)));
       });
     } else if (ncSteps) {
       ncSteps.innerHTML = '';
     }
 
+    // Build expanded body with scenario content
+    if (ncBody) {
+      ncBody.innerHTML = buildScenarioBody(config);
+    }
+
     // Reset state
     isPaused = false;
     ncDescOpen = false;
-    ncBody.classList.add('hidden');
-    ncToggleDesc.classList.remove('open');
+    if (ncBody) ncBody.classList.add('hidden');
+    ncCard.classList.remove('expanded');
     updatePlayPauseUI();
-
-    // Show card
     ncCard.classList.remove('hidden');
+  }
+
+  // Populate expanded body for non-scenario prototypes
+  function populateProtoBody(id, info) {
+    if (!ncBody) return;
+    ncBody.innerHTML = buildProtoBody(id, info);
   }
 
   function setNarrationStep(idx, uxText) {
@@ -3158,11 +3237,13 @@
     if (ncNext) ncNext.disabled = (idx >= scenarioSteps.length - 1 || scenarioSteps.length === 0);
 
     // UX guideline
-    if (uxText) {
+    const ncUx = document.getElementById('proto-nc-ux');
+    const ncUxText = document.getElementById('proto-nc-ux-text');
+    if (uxText && ncUx && ncUxText) {
       ncUx.classList.remove('hidden');
       ncUxText.textContent = uxText;
       gsap.fromTo(ncUx, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: smooth });
-    } else {
+    } else if (ncUx) {
       ncUx.classList.add('hidden');
     }
   }
@@ -3180,7 +3261,7 @@
     narrationHasContent = false;
     if (ncSteps) ncSteps.innerHTML = '';
     if (ncBody) ncBody.classList.add('hidden');
-    if (ncToggleDesc) { ncToggleDesc.classList.remove('open'); ncToggleDesc.classList.add('hidden'); }
+    ncCard.classList.remove('expanded');
     if (ncPrev) ncPrev.classList.add('hidden');
     if (ncNext) ncNext.classList.add('hidden');
     isPaused = false;
@@ -3189,6 +3270,20 @@
     scenarioSteps = [];
     scenarioStepCallbacks = [];
     currentStepIdx = -1;
+  }
+
+  // Toggle expand/collapse via title area click
+  function toggleExpand() {
+    ncDescOpen = !ncDescOpen;
+    if (ncBody) ncBody.classList.toggle('hidden', !ncDescOpen);
+    ncCard.classList.toggle('expanded', ncDescOpen);
+  }
+
+  if (ncTitleArea) {
+    ncTitleArea.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleExpand();
+    });
   }
 
   // Play/Pause
@@ -3213,9 +3308,7 @@
   if (ncRestart) {
     ncRestart.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (currentProto) {
-        navigateTo(currentProto);
-      }
+      if (currentProto) navigateTo(currentProto);
     });
   }
 
@@ -3230,16 +3323,6 @@
     ncNext.addEventListener('click', (e) => {
       e.stopPropagation();
       if (currentStepIdx < scenarioSteps.length - 1) goToStep(currentStepIdx + 1);
-    });
-  }
-
-  // Toggle description
-  if (ncToggleDesc) {
-    ncToggleDesc.addEventListener('click', (e) => {
-      e.stopPropagation();
-      ncDescOpen = !ncDescOpen;
-      ncBody.classList.toggle('hidden', !ncDescOpen);
-      ncToggleDesc.classList.toggle('open', ncDescOpen);
     });
   }
 
@@ -4346,50 +4429,178 @@
     sc6: playSC6, sc7: playSC7, sc8: playSC8, sc9: playSC9, sc10: playSC10,
   };
 
-  // --- Titles & subtitles for all prototypes ---
+  // --- Titles, descriptions & rich content for all prototypes ---
   const protoTitles = {
-    t1:  { title: 'Ouvrir la classe (QR Code)', subtitle: 'L\'enseignant affiche un QR code en grand. Les élèves le scannent avec leur tablette et rejoignent la classe progressivement. Les cartes apparaissent une à une avec leur statut de connexion.' },
-    t2:  { title: 'Activer les interactions', subtitle: 'L\'enseignant active le suivi en temps réel. Les badges d\'interaction (terminé, question, main levée) apparaissent sur les cartes des élèves pour donner une vue d\'ensemble immédiate.' },
-    t3:  { title: 'Afficher les écrans', subtitle: 'L\'enseignant clique sur « Afficher les écrans » pour voir l\'activité en cours sur chaque tablette. Les miniatures d\'écran apparaissent sur les cartes, remplaçant la vue nom + statut.' },
-    t4:  { title: 'Consulter les messages', subtitle: 'L\'enseignant ouvre le panneau de messages pour lire les questions et retours des élèves. Chaque message affiche le nom, le contenu et un horodatage.' },
-    t5:  { title: 'Verrouiller les écrans', subtitle: 'L\'enseignant verrouille toutes les tablettes d\'un clic. Les écrans des élèves affichent un message de verrouillage. Il peut déverrouiller à tout moment.' },
-    t6:  { title: 'Envoyer une ressource', subtitle: 'L\'enseignant envoie un document PDF à toute la classe. Un badge « Reçu » apparaît sur chaque carte élève pour confirmer la distribution.' },
-    t7:  { title: 'Projeter son écran', subtitle: 'L\'enseignant projette le contenu de son écran sur le vidéo projecteur. Les élèves voient le contenu projeté en temps réel.' },
-    t8:  { title: 'Prendre la main', subtitle: 'L\'enseignant prend le contrôle de toutes les tablettes pour afficher un contenu spécifique. Les élèves ne peuvent plus naviguer librement.' },
-    t9:  { title: 'Créer des groupes', subtitle: 'L\'enseignant sélectionne des élèves pour former des groupes de travail. Les groupes sont identifiés par des couleurs dans la barre supérieure.' },
-    t10: { title: 'Lancer un sondage', subtitle: 'L\'enseignant envoie une question à toute la classe. Les résultats arrivent en temps réel sous forme de barres de progression colorées.' },
-    t11: { title: 'Répondre à un élève', subtitle: 'L\'enseignant ouvre le message d\'un élève et lui répond directement avec un message rapide ou personnalisé.' },
-    t12: { title: 'Mettre 3 écrans en avant', subtitle: 'L\'enseignant sélectionne 3 écrans d\'élèves et les affiche en grand pour les projeter sur le vidéo projecteur.' },
-    t13: { title: 'Annoter un devoir projeté', subtitle: 'L\'enseignant agrandit l\'écran d\'un élève, le projette et active le mode annotation pour dessiner directement sur le devoir.' },
-    t14: { title: 'Scanner et envoyer', subtitle: 'L\'enseignant scanne un document physique avec la caméra, le recadre, le numérise en PDF puis l\'envoie sur toutes les tablettes en quelques secondes.' },
-    t15: { title: 'Fin de séance', subtitle: 'L\'enseignant clique sur « Quitter ». Un récapitulatif s\'affiche avec les statistiques de la séance et l\'accès aux documents échangés.' },
-    t16: { title: 'Partager un lien web', subtitle: 'L\'enseignant envoie une URL à toute la classe. Les élèves reçoivent le lien directement sur leur tablette.' },
-    t17: { title: 'Lancer un minuteur', subtitle: 'L\'enseignant démarre un compteur à rebours visible par toute la classe. La barre change de couleur à mesure que le temps passe.' },
-    t18: { title: 'Groupes aléatoires', subtitle: 'L\'enseignant crée automatiquement des groupes aléatoires. Les élèves sont répartis et les cartes s\'organisent par couleur de groupe.' },
-    t19: { title: 'Accéder aux séances', subtitle: 'L\'enseignant consulte la liste de ses séances passées, en cours et programmées. Il peut filtrer, reprendre ou consulter chaque session.' },
-    t20: { title: 'Nouvelle séance', subtitle: 'L\'enseignant crée une nouvelle séance en renseignant la matière, la classe, l\'horaire et les ressources à distribuer.' },
-    t21: { title: 'Mode devoir', subtitle: 'L\'enseignant configure un exercice noté à durée limitée. Il définit les restrictions (internet, apps) et les ressources autorisées.' },
-    t22: { title: 'Examen officiel — Configuration', subtitle: 'L\'enseignant lance un examen préparé par l\'administration via le MDM. Les restrictions matérielles sont verrouillées (WiFi, Bluetooth, clavier, navigation).' },
-    t23: { title: 'Examen — Surveillance', subtitle: 'L\'enseignant surveille 32 élèves en temps réel pendant l\'examen. Il voit les statuts (en cours, terminé, inactif) et récupère les copies.' },
-    t24: { title: 'Examen — Récapitulatif & Copies', subtitle: 'L\'enseignant accède au bilan de l\'examen : copies récupérées, sauvegarde Google Drive, envoi par email aux autorités, mode correction.' },
-    t25: { title: 'Voir l\'écran d\'un élève', subtitle: 'L\'enseignant clique sur la carte d\'un élève pour afficher son écran en plein format. Il navigue entre les élèves avec un carrousel horizontal et peut verrouiller l\'écran individuellement.' },
-    s1:  { title: 'Login + Scanner le QR Code', subtitle: 'L\'élève se connecte avec ses identifiants, puis scanne le QR code affiché par l\'enseignant pour rejoindre la classe.' },
-    s2:  { title: 'Consulter les ressources', subtitle: 'L\'élève ouvre le panneau de ressources pour accéder aux documents partagés par l\'enseignant pendant la séance.' },
-    s3:  { title: 'Envoyer « J\'ai terminé »', subtitle: 'L\'élève sélectionne un message pré-défini et l\'envoie à l\'enseignant pour signaler qu\'il a fini son travail.' },
-    s4:  { title: 'Poser une question', subtitle: 'L\'élève envoie une question à l\'enseignant sans interrompre la classe, via un message asynchrone.' },
-    s5:  { title: 'Partager un document', subtitle: 'L\'élève dépose un fichier dans la zone de dépôt et l\'envoie à l\'enseignant avec une barre de progression.' },
-    s6:  { title: 'Recevoir une ressource', subtitle: 'L\'élève reçoit une notification toast quand l\'enseignant partage un document. Il peut l\'ouvrir dans le panneau latéral.' },
-    s7:  { title: 'Écran verrouillé', subtitle: 'L\'élève voit son écran verrouillé par l\'enseignant avec un message explicite et neutre.' },
-    sc1: { title: 'Démarrer et distribuer', subtitle: 'Monsieur Julien ouvre sa classe de physique. Ses élèves — Chloé, Marius et les autres — scannent le QR code, rejoignent la séance. Il affiche les écrans, distribue le cours du jour, et Chloé ouvre le PDF sur sa tablette.' },
-    sc2: { title: 'Observer et intervenir', subtitle: 'En milieu de séance, Monsieur Julien observe que Emma navigue hors-sujet. Il vérifie les écrans, verrouille les tablettes pour recentrer la classe, puis consulte les messages de Ravi qui a une question.' },
-    sc3: { title: 'Différencier les parcours', subtitle: 'Monsieur Julien crée un groupe « Approfondissement » avec Lucas et 4 autres élèves avancés. Il leur envoie un exercice supplémentaire pendant que Aya et les autres continuent le parcours standard.' },
-    sc4: { title: 'Évaluer en direct', subtitle: 'Avant de passer au chapitre suivant, Monsieur Julien lance un sondage rapide. Chloé a bien compris, Nolan est perdu. Les résultats en temps réel permettent d\'adapter la suite du cours.' },
-    sc5: { title: 'Collaborer et rendre', subtitle: 'En fin de séance, Chloé dépose son devoir, Ravi pose une dernière question. Monsieur Julien répond à Ravi, projette le travail exemplaire de Chloé à toute la classe, puis clôt la séance.' },
-    sc6: { title: 'Scanner et distribuer un document papier', subtitle: 'Monsieur Julien scanne un exercice papier avec la caméra de son ordinateur, le convertit en PDF et l\'envoie sur toutes les tablettes. Léa le reçoit instantanément.' },
-    sc7: { title: 'Examen officiel de bout en bout', subtitle: 'Jour d\'examen. Monsieur Julien lance le bac blanc, surveille Emma et Nolan pendant 4 heures, récupère les 32 copies et les transmet à l\'académie par email.' },
-    sc8: { title: 'Contrôle surprise en classe', subtitle: 'Monsieur Julien lance un contrôle de 30 minutes avec restrictions. Chloé termine rapidement, Ravi travaille jusqu\'au bout. Les badges de complétion permettent de suivre la progression.' },
-    sc9: { title: 'Mettre en valeur un travail d\'élève', subtitle: 'Monsieur Julien sélectionne le devoir de Chloé, le projette au vidéo projecteur et l\'annote en direct pour montrer les points forts à toute la classe.' },
-    sc10: { title: 'Une séance complète de A à Z', subtitle: 'Monsieur Julien gère une séance entière : QR code, distribution, supervision, sondage de compréhension, puis clôture avec sauvegarde automatique. Léa participe activement, Hugo reçoit de l\'aide.' },
+    t1:  { title: 'Ouvrir la classe (QR Code)', subtitle: 'L\'enseignant affiche un QR code en grand. Les élèves le scannent et rejoignent la classe progressivement.',
+      interaction: 'L\'enseignant affiche un QR code plein écran. Les élèves le scannent avec leur tablette. Les cartes apparaissent une à une avec le statut « Connecté » ou « Absent ». Un compteur en temps réel affiche le nombre de connexions. Un lien texte offre une alternative au scan.',
+      concept: 'Connexion visuelle et progressive. Chaque élève qui rejoint la classe génère un feedback immédiat sur l\'écran de l\'enseignant. Le QR code plein écran est lisible depuis n\'importe quel endroit de la salle.',
+      uxStrategy: 'Progressive disclosure : les cartes arrivent une par une pour créer un sentiment de classe vivante. Le compteur rassure l\'enseignant sur l\'avancement. Le statut binaire (connecté/absent) simplifie le suivi.',
+      outcome: 'L\'enseignant lance sa séance en 30 secondes et sait exactement qui est présent sans faire l\'appel.' },
+    t2:  { title: 'Activer les interactions', subtitle: 'Les badges d\'interaction apparaissent sur les cartes des élèves pour donner une vue d\'ensemble immédiate.',
+      interaction: 'L\'enseignant active le suivi en temps réel. Des badges colorés (terminé, question, main levée) s\'affichent sur chaque carte élève. Les badges se mettent à jour automatiquement.',
+      concept: 'Feedback ambient : les badges fournissent une information contextuelle sans interrompre le flux de la séance. L\'enseignant perçoit l\'état de la classe d\'un coup d\'œil.',
+      uxStrategy: 'Signalétique intuitive par couleur et icône. Pas de notification intrusive : l\'information est là, visible, mais non bloquante. L\'enseignant décide quand agir.',
+      outcome: 'L\'enseignant identifie les élèves qui ont terminé, ceux qui ont besoin d\'aide, et ceux qui lèvent la main, sans aucune interruption.' },
+    t3:  { title: 'Afficher les écrans', subtitle: 'Les miniatures d\'écran apparaissent sur les cartes, remplaçant la vue nom + statut.',
+      interaction: 'L\'enseignant clique sur « Afficher les écrans ». Les cartes passent du mode avatar + statut au mode miniature d\'écran. Chaque carte montre en temps réel ce que l\'élève voit sur sa tablette.',
+      concept: 'Supervision non intrusive. L\'enseignant voit l\'activité réelle sans prendre le contrôle. Le changement de vue est réversible et immédiat.',
+      uxStrategy: 'Transition fluide entre les deux modes de vue (avatar → écran). Les miniatures sont suffisamment grandes pour identifier l\'activité sans zoom. Le layout en grille exploite la vision périphérique.',
+      outcome: 'L\'enseignant repère instantanément qui travaille, qui est bloqué, et qui navigue hors-sujet.' },
+    t4:  { title: 'Consulter les messages', subtitle: 'Le panneau de messages affiche les questions et retours des élèves avec horodatage.',
+      interaction: 'L\'enseignant ouvre le panneau latéral de messages. Chaque message affiche le nom de l\'élève, le contenu et l\'heure. Le panneau coulisse depuis la droite sans masquer la grille.',
+      concept: 'Canal de communication asynchrone et silencieux. Les élèves peuvent s\'exprimer sans lever la main ni interrompre le cours. L\'enseignant lit quand il le décide.',
+      uxStrategy: 'Panneau latéral coulissant qui préserve le contexte principal (la grille d\'élèves). Les messages sont ordonnés chronologiquement avec des indicateurs de lecture.',
+      outcome: 'L\'enseignant reste informé des questions sans perturber le rythme de la classe. Les élèves timides peuvent s\'exprimer librement.' },
+    t5:  { title: 'Verrouiller les écrans', subtitle: 'L\'enseignant verrouille toutes les tablettes d\'un clic. Déverrouillage instantané.',
+      interaction: 'Un clic sur « Verrouiller » : les écrans s\'éteignent un par un en cascade. Chaque carte affiche une icône cadenas et le statut « Verrouillé ». Un bandeau rouge confirme le verrouillage. Le déverrouillage inverse l\'animation.',
+      concept: 'Contrôle autoritaire mais bienveillant. Le verrouillage est visible (animation cascade) pour que l\'enseignant constate l\'effet. Le déverrouillage est tout aussi rapide.',
+      uxStrategy: 'Animation en vague : chaque écran se verrouille avec un léger décalage pour créer un effet visuel satisfaisant et confirmer que l\'action s\'applique à tous. Le bandeau rouge renforce le feedback.',
+      outcome: 'L\'enseignant capte l\'attention de toute la classe en une seconde. Les élèves voient un message neutre sur leur écran.' },
+    t6:  { title: 'Envoyer une ressource', subtitle: 'Distribution d\'un PDF à toute la classe avec confirmation de réception sur chaque carte.',
+      interaction: 'L\'enseignant sélectionne un fichier PDF et clique « Envoyer à tous ». Un badge « Reçu » apparaît progressivement sur chaque carte élève, confirmant la distribution.',
+      concept: 'Distribution zéro-friction. Un seul geste envoie le document à 32 tablettes. Le feedback par carte confirme la réception individuelle.',
+      uxStrategy: 'Confirmation progressive : les badges « Reçu » apparaissent en staggered pour montrer que la distribution est en cours. Pas de modal de confirmation, l\'action est directe et le résultat visible.',
+      outcome: 'L\'enseignant distribue un document en 2 secondes et voit qui l\'a reçu sans demander.' },
+    t7:  { title: 'Projeter son écran', subtitle: 'Projection du contenu enseignant sur le vidéo projecteur en temps réel.',
+      interaction: 'L\'enseignant active la projection. Son écran est dupliqué vers le vidéo projecteur. Un indicateur « En projection » apparaît dans l\'interface.',
+      concept: 'Projection sans configuration. L\'enseignant partage instantanément ce qu\'il voit, quand il le décide, sans passer par un logiciel tiers.',
+      uxStrategy: 'Un bouton toggle simple, pas de boîte de dialogue. L\'indicateur visuel rappelle que la projection est active. L\'enseignant garde le contrôle de ce qu\'il montre.',
+      outcome: 'L\'enseignant illustre son propos en projetant n\'importe quel contenu de son écran sans délai technique.' },
+    t8:  { title: 'Prendre la main', subtitle: 'L\'enseignant prend le contrôle de toutes les tablettes pour afficher un contenu spécifique.',
+      interaction: 'L\'enseignant pousse un contenu (ressource, application, URL) sur toutes les tablettes. Les élèves voient le contenu imposé, la navigation libre est temporairement désactivée.',
+      concept: 'Mode dirigé temporaire. Quand l\'enseignant a besoin que tous les élèves voient la même chose, il prend la main sans négociation.',
+      uxStrategy: 'Action réversible et visible. Les élèves comprennent que c\'est temporaire grâce à un message explicite. L\'enseignant voit sur sa grille que le push est actif.',
+      outcome: 'Toute la classe est synchronisée sur le même contenu en une seconde.' },
+    t9:  { title: 'Créer des groupes', subtitle: 'Sélection manuelle d\'élèves pour former des groupes identifiés par couleur.',
+      interaction: 'L\'enseignant sélectionne des élèves un par un avec des chips de couleur. Chaque groupe reçoit une couleur distincte. La barre supérieure affiche les groupes formés.',
+      concept: 'Différenciation pédagogique rendue simple. L\'enseignant crée des parcours différents pour des sous-groupes, directement depuis sa vue de classe.',
+      uxStrategy: 'Sélection par chips visuels avec couleur immédiate. L\'enseignant voit les groupes se former en temps réel sur la grille. La couleur est le vecteur d\'identification principal.',
+      outcome: 'L\'enseignant constitue des groupes de travail en quelques clics et peut leur envoyer des ressources différenciées.' },
+    t10: { title: 'Lancer un sondage', subtitle: 'Question envoyée à la classe avec résultats en temps réel sous forme de barres colorées.',
+      interaction: 'L\'enseignant crée une question avec des options de réponse. Les élèves reçoivent le sondage sur leur tablette. Les résultats s\'affichent en temps réel sous forme de barres de progression colorées.',
+      concept: 'Évaluation formative intégrée au flux de la séance. L\'enseignant vérifie la compréhension sans sortir de l\'application ni utiliser un outil tiers.',
+      uxStrategy: 'Affichage temps réel des résultats pour créer un momentum de participation. Les barres de progression colorées rendent les données lisibles instantanément. L\'anonymat des réponses encourage l\'honnêteté.',
+      outcome: 'L\'enseignant évalue la compréhension de la classe en 30 secondes et adapte son cours en conséquence.' },
+    t11: { title: 'Répondre à un élève', subtitle: 'Réponse directe via message rapide ou personnalisé depuis le panneau de messages.',
+      interaction: 'L\'enseignant ouvre le message d\'un élève, choisit une réponse rapide prédéfinie ou tape un message personnalisé, et l\'envoie. L\'élève reçoit la réponse sur sa tablette.',
+      concept: 'Communication one-to-one sans perturber la classe. L\'enseignant aide individuellement sans que les autres élèves ne soient au courant.',
+      uxStrategy: 'Réponses rapides prédéfinies pour les cas courants (« Bien joué », « Relis la consigne »). Champ libre pour les réponses personnalisées. Le tout sans quitter la vue principale.',
+      outcome: 'L\'enseignant accompagne chaque élève individuellement tout en gardant la vue d\'ensemble sur la classe.' },
+    t12: { title: 'Mettre 3 écrans en avant', subtitle: 'Sélection et projection de 3 écrans d\'élèves sur le vidéo projecteur.',
+      interaction: 'L\'enseignant sélectionne 3 cartes élèves. Leurs écrans s\'affichent côte à côte en grand format, prêts à être projetés.',
+      concept: 'Mise en valeur collective. L\'enseignant montre plusieurs travaux simultanément pour comparer, féliciter ou corriger.',
+      uxStrategy: 'Sélection directe sur les cartes (pas de menu). L\'affichage en triptique maximise la lisibilité. La transition vers le mode projection est fluide.',
+      outcome: 'L\'enseignant enrichit son cours avec des exemples concrets tirés du travail des élèves.' },
+    t13: { title: 'Annoter un devoir projeté', subtitle: 'Agrandissement d\'un écran élève avec mode annotation SVG en direct.',
+      interaction: 'L\'enseignant agrandit l\'écran d\'un élève, le projette, puis active le mode annotation. Il peut dessiner, entourer, souligner directement sur le contenu affiché.',
+      concept: 'Correction collaborative en temps réel. L\'enseignant corrige devant toute la classe, sur le travail réel d\'un élève, en direct.',
+      uxStrategy: 'Outils d\'annotation simples (trait libre, couleur) accessibles en un clic. Le dessin SVG est fluide et précis. L\'élève dont le travail est projeté se sent valorisé.',
+      outcome: 'L\'enseignant illustre ses corrections de manière vivante et interactive, directement sur le travail d\'un élève.' },
+    t14: { title: 'Scanner et envoyer', subtitle: 'Numérisation d\'un document papier en PDF puis distribution instantanée sur les tablettes.',
+      interaction: 'L\'enseignant active la caméra, capture le document, le recadre automatiquement, ajuste la perspective, convertit en PDF et envoie à toute la classe.',
+      concept: 'Passerelle papier-numérique. L\'enseignant n\'a pas besoin de scanner séparément, tout se fait dans l\'application en quelques secondes.',
+      uxStrategy: 'Pipeline en 5 étapes visuelles (capture → cadrage → perspective → PDF → envoi). Chaque étape est automatisée au maximum avec possibilité d\'ajustement manuel.',
+      outcome: 'L\'enseignant numérise et distribue un document papier en moins de 15 secondes.' },
+    t15: { title: 'Fin de séance', subtitle: 'Récapitulatif avec statistiques, accès aux documents et sauvegarde automatique.',
+      interaction: 'L\'enseignant clique « Quitter ». Un récapitulatif s\'affiche : durée, nombre de ressources échangées, participation, messages. Les documents sont sauvegardés automatiquement sur Google Drive.',
+      concept: 'Clôture propre et automatisée. L\'enseignant ne perd rien et retrouvera tout lors de la prochaine séance.',
+      uxStrategy: 'Récapitulatif non bloquant : l\'enseignant voit les statistiques sans être obligé de les lire. La sauvegarde Google Drive est automatique, pas optionnelle.',
+      outcome: 'L\'enseignant termine sa séance sereinement, les données sont archivées sans effort.' },
+    t16: { title: 'Partager un lien web', subtitle: 'Envoi d\'une URL sur toutes les tablettes en un clic.',
+      interaction: 'L\'enseignant colle ou tape une URL et clique envoyer. Le lien s\'ouvre automatiquement sur les tablettes des élèves.',
+      concept: 'Partage d\'URL zéro-friction. Pas de dictée d\'adresse, pas de QR code externe, l\'URL arrive directement sur les tablettes.',
+      uxStrategy: 'Champ URL avec auto-complétion et validation. Envoi instantané avec confirmation visuelle sur les cartes.',
+      outcome: 'Les élèves accèdent tous à la même page web en 2 secondes, sans erreur de frappe.' },
+    t17: { title: 'Lancer un minuteur', subtitle: 'Compteur à rebours visible par toute la classe avec changement de couleur progressif.',
+      interaction: 'L\'enseignant définit une durée et lance le minuteur. Une barre de progression horizontale s\'affiche en haut de l\'écran. Elle passe du vert au orange puis au rouge à mesure que le temps s\'écoule. Les badges de complétion apparaissent sur les cartes.',
+      concept: 'Gestion du temps visuelle et partagée. Le même minuteur est visible par l\'enseignant et les élèves, créant une temporalité commune.',
+      uxStrategy: 'Barre de progression avec sémantique colorimétrique universelle (vert → orange → rouge). Les badges de complétion permettent de voir qui a fini avant la fin du temps.',
+      outcome: 'L\'enseignant structure son activité dans le temps et les élèves gèrent leur rythme de travail.' },
+    t18: { title: 'Groupes aléatoires', subtitle: 'Création automatique de groupes avec répartition par couleur sur les cartes.',
+      interaction: 'L\'enseignant choisit le nombre de groupes et clique « Créer ». Les élèves sont répartis aléatoirement. Les cartes se réorganisent par couleur de groupe.',
+      concept: 'Randomisation équitable et instantanée. L\'enseignant crée des groupes variés sans biais de choix, en un clic.',
+      uxStrategy: 'Animation de répartition : les cartes glissent vers leur groupe pour rendre le processus visible. Les couleurs sont distinctes et accessibles.',
+      outcome: 'L\'enseignant constitue des groupes hétérogènes en une seconde, favorisant le brassage entre élèves.' },
+    t19: { title: 'Accéder aux séances', subtitle: 'Liste des séances passées, en cours et programmées avec filtres et reprise.',
+      interaction: 'L\'enseignant consulte un index de toutes ses séances. Il filtre par statut (en cours, terminées, examens). Il peut reprendre une séance active ou consulter l\'historique.',
+      concept: 'Historique pédagogique structuré. Chaque séance est une unité traçable avec ses documents, participants et statistiques.',
+      uxStrategy: 'Liste ordonnée chronologiquement avec filtres par statut. Les séances actives sont mises en avant. L\'accès à l\'historique est direct, sans navigation complexe.',
+      outcome: 'L\'enseignant retrouve n\'importe quelle séance passée et peut reprendre où il s\'était arrêté.' },
+    t20: { title: 'Nouvelle séance', subtitle: 'Création de séance avec matière, classe, horaire et ressources pré-chargées.',
+      interaction: 'L\'enseignant remplit un formulaire : matière, classe, horaire, ressources à distribuer, interactions activées. La séance est créée et prête à lancer.',
+      concept: 'Préparation en amont. L\'enseignant configure sa séance à l\'avance pour ne pas perdre de temps le jour J.',
+      uxStrategy: 'Formulaire structuré par sections logiques (contexte → contenu → interactions). Les ressources sont pré-chargées pour distribution automatique à l\'ouverture.',
+      outcome: 'L\'enseignant prépare sa séance en 2 minutes et tout est prêt quand les élèves arrivent.' },
+    t21: { title: 'Mode devoir', subtitle: 'Exercice noté avec durée limitée, restrictions internet/apps et ressources autorisées.',
+      interaction: 'L\'enseignant configure un devoir : durée, restriction internet, applications autorisées, ressources consultables. Le devoir se lance avec un minuteur et les restrictions s\'activent automatiquement.',
+      concept: 'Évaluation encadrée et équitable. Les restrictions numériques reproduisent les conditions d\'un devoir surveillé, mais de manière automatisée.',
+      uxStrategy: 'Toggles visuels pour chaque restriction. La whitelist d\'applications et de ressources est configurable. Le minuteur intégré gère la temporalité.',
+      outcome: 'L\'enseignant lance un devoir surveillé numériquement, sans triche possible, en quelques clics.' },
+    t22: { title: 'Examen officiel — Configuration', subtitle: 'Examen administré via MDM avec restrictions matérielles verrouillées.',
+      interaction: 'L\'enseignant lance un examen préparé par l\'administration. Les restrictions matérielles se verrouillent : WiFi limité, Bluetooth désactivé, clavier virtuel uniquement, navigation filtrée. Les sujets chiffrés se déverrouillent à l\'heure H.',
+      concept: 'Examen haute sécurité, administré par l\'institution mais piloté par l\'enseignant. Le MDM garantit l\'intégrité des conditions d\'examen.',
+      uxStrategy: 'Dashboard de restrictions avec statut visuel (vert/rouge) pour chaque composant matériel. L\'enseignant voit clairement ce qui est verrouillé. Le lancement est un bouton unique.',
+      outcome: 'L\'enseignant lance un examen officiel en toute confiance, les conditions sont garanties par le système.' },
+    t23: { title: 'Examen — Surveillance', subtitle: 'Surveillance temps réel de 32 élèves avec statuts et récupération des copies.',
+      interaction: 'Grille de 32 élèves en temps réel pendant l\'examen. Chaque carte affiche le statut : en cours, terminé, inactif. Le minuteur décompte. L\'enseignant récupère les copies à la fin.',
+      concept: 'Surveillance passive mais exhaustive. L\'enseignant voit tout sans intervenir, sauf si un statut « inactif » nécessite une vérification.',
+      uxStrategy: 'Grille dense optimisée pour 32 cartes simultanées. Code couleur des statuts : bleu (en cours), vert (terminé), orange (alerte inactivité). Le minuteur est le repère temporel central.',
+      outcome: 'L\'enseignant surveille sereinement 32 élèves et détecte les anomalies sans surveillance physique constante.' },
+    t24: { title: 'Examen — Récapitulatif & Copies', subtitle: 'Bilan d\'examen avec copies récupérées, sauvegarde Drive et envoi par email.',
+      interaction: 'L\'enseignant accède au bilan : nombre de copies récupérées, téléchargement ZIP, sauvegarde Google Drive automatique, génération d\'email pour les autorités académiques.',
+      concept: 'Chaîne de traçabilité complète. De la récupération des copies à l\'envoi aux autorités, tout est intégré et documenté.',
+      uxStrategy: 'Actions en cascade : récupérer → sauvegarder → envoyer. Chaque étape confirme visuellement son succès. L\'email pré-rempli évite les erreurs.',
+      outcome: 'L\'enseignant transmet les copies et le PV d\'examen en 3 clics, sans logiciel tiers.' },
+    t25: { title: 'Voir l\'écran d\'un élève', subtitle: 'Écran élève en plein format avec navigation carrousel et verrouillage individuel.',
+      interaction: 'L\'enseignant clique sur une carte. L\'écran de l\'élève s\'affiche en plein format. Il navigue entre les élèves avec des flèches (carrousel horizontal). Il peut verrouiller/déverrouiller l\'écran de cet élève.',
+      concept: 'Zoom contextuel. L\'enseignant passe de la vue d\'ensemble (grille) au détail (plein écran) d\'un clic. La navigation carrousel évite de revenir à la grille.',
+      uxStrategy: 'Transition fluide grille → plein écran. Le carrousel permet de parcourir les élèves sans retour arrière. Le verrouillage individuel offre une granularité fine.',
+      outcome: 'L\'enseignant examine le travail d\'un élève en détail et peut enchaîner avec le suivant sans friction.' },
+    s1:  { title: 'Login + Scanner le QR Code', subtitle: 'L\'élève se connecte puis scanne le QR code pour rejoindre la classe.',
+      interaction: 'L\'élève entre ses identifiants, se connecte, puis scanne le QR code affiché par l\'enseignant. La classe est rejointe, l\'écran de session s\'affiche.',
+      concept: 'Double authentification simplifiée. Le login identifie l\'élève, le QR code le rattache à la bonne séance. Deux gestes, zéro ambiguïté.',
+      uxStrategy: 'Formulaire de login épuré avec champs larges adaptés au tactile. Le scanner QR est plein écran avec viseur et feedback de succès immédiat.',
+      outcome: 'L\'élève rejoint sa classe en moins de 15 secondes, sans aide de l\'enseignant.' },
+    s2:  { title: 'Consulter les ressources', subtitle: 'Panneau latéral pour accéder aux documents partagés pendant la séance.',
+      interaction: 'L\'élève ouvre le panneau de ressources. Les documents partagés par l\'enseignant sont listés par type (PDF, DOC, lien). Un clic ouvre le document dans un panneau de prévisualisation.',
+      concept: 'Accès centralisé aux ressources. Tout ce que l\'enseignant partage se retrouve au même endroit, accessible à tout moment.',
+      uxStrategy: 'Panneau latéral non bloquant : l\'élève peut consulter une ressource tout en gardant son travail visible. Les icônes de type fichier facilitent l\'identification.',
+      outcome: 'L\'élève retrouve instantanément tous les documents distribués pendant la séance.' },
+    s3:  { title: 'Envoyer « J\'ai terminé »', subtitle: 'Message pré-défini envoyé à l\'enseignant pour signaler la fin du travail.',
+      interaction: 'L\'élève sélectionne « J\'ai terminé » dans une liste de messages prédéfinis et l\'envoie. L\'enseignant voit un badge « Terminé » sur la carte de l\'élève.',
+      concept: 'Communication structurée. Les messages prédéfinis éliminent l\'ambiguïté et réduisent la charge cognitive pour l\'élève.',
+      uxStrategy: 'Sélection en un clic dans une liste courte de messages contextuels. Pas de champ texte libre pour cette action simple. Confirmation visuelle immédiate.',
+      outcome: 'L\'élève signale qu\'il a fini sans déranger la classe. L\'enseignant est informé instantanément.' },
+    s4:  { title: 'Poser une question', subtitle: 'Message asynchrone envoyé à l\'enseignant sans interrompre la classe.',
+      interaction: 'L\'élève tape sa question dans un champ texte et l\'envoie. L\'enseignant la reçoit dans son panneau de messages. Il peut répondre quand il le souhaite.',
+      concept: 'Main levée numérique et silencieuse. L\'élève s\'exprime sans gêne sociale, l\'enseignant traite les questions à son rythme.',
+      uxStrategy: 'Champ texte simple avec envoi. Pas de formatage, pas de complexité. Le message apparaît dans la file de l\'enseignant avec le nom et l\'heure.',
+      outcome: 'Les élèves timides posent des questions qu\'ils n\'oseraient pas poser à voix haute.' },
+    s5:  { title: 'Partager un document', subtitle: 'Dépôt de fichier avec barre de progression et envoi à l\'enseignant.',
+      interaction: 'L\'élève dépose un fichier dans une zone de dépôt (drag & drop ou sélection). Une barre de progression s\'anime pendant l\'envoi. Une confirmation s\'affiche à la fin.',
+      concept: 'Rendu de devoir numérique natif. L\'élève soumet son travail directement depuis sa tablette, sans email ni clé USB.',
+      uxStrategy: 'Zone de dépôt large et visible avec feedback de progression. L\'animation de la barre rassure l\'élève que l\'envoi est en cours. La confirmation est explicite.',
+      outcome: 'L\'élève rend son travail en 3 secondes. L\'enseignant le reçoit immédiatement.' },
+    s6:  { title: 'Recevoir une ressource', subtitle: 'Notification toast lors du partage d\'un document par l\'enseignant.',
+      interaction: 'Un toast non bloquant apparaît en haut de l\'écran de l\'élève quand l\'enseignant partage un document. L\'élève peut le fermer ou ouvrir la ressource.',
+      concept: 'Notification douce et non intrusive. L\'élève est informé sans être interrompu dans son travail en cours.',
+      uxStrategy: 'Toast avec icône de type fichier, titre du document, et bouton de fermeture. Disparition automatique après quelques secondes si non cliqué.',
+      outcome: 'L\'élève sait qu\'une ressource est disponible sans perdre le fil de son travail.' },
+    s7:  { title: 'Écran verrouillé', subtitle: 'Message neutre et explicite affiché quand l\'enseignant verrouille la tablette.',
+      interaction: 'L\'écran de l\'élève affiche un cadenas et un message neutre : « Votre écran a été verrouillé par l\'enseignant ». Aucune interaction possible jusqu\'au déverrouillage.',
+      concept: 'Verrouillage non punitif. Le message est factuel, pas réprimandant. L\'élève comprend que c\'est une action de l\'enseignant, pas une sanction.',
+      uxStrategy: 'Écran sobre avec icône cadenas centrée et message court. Pas de couleur agressive (gris neutre). L\'élève ne peut que regarder et attendre.',
+      outcome: 'L\'élève comprend que l\'enseignant demande son attention, sans se sentir puni.' },
+    sc1: { title: 'Démarrer et distribuer', subtitle: 'Monsieur Julien ouvre sa classe de physique. Ses élèves scannent le QR code, rejoignent la séance. Il distribue le cours du jour.' },
+    sc2: { title: 'Observer et intervenir', subtitle: 'En milieu de séance, Monsieur Julien vérifie les écrans, verrouille les tablettes pour recentrer la classe, puis consulte les messages.' },
+    sc3: { title: 'Différencier les parcours', subtitle: 'Monsieur Julien crée un groupe « Approfondissement » avec les élèves avancés et leur envoie un exercice supplémentaire.' },
+    sc4: { title: 'Évaluer en direct', subtitle: 'Monsieur Julien lance un sondage rapide. Les résultats en temps réel permettent d\'adapter la suite du cours.' },
+    sc5: { title: 'Collaborer et rendre', subtitle: 'Chloé dépose son devoir, Ravi pose une question. Monsieur Julien répond, projette le travail exemplaire, puis clôt la séance.' },
+    sc6: { title: 'Scanner et distribuer un document papier', subtitle: 'Monsieur Julien scanne un exercice papier, le convertit en PDF et l\'envoie sur toutes les tablettes.' },
+    sc7: { title: 'Examen officiel de bout en bout', subtitle: 'Jour d\'examen. Monsieur Julien lance le bac blanc, surveille 32 élèves, récupère les copies et les transmet à l\'académie.' },
+    sc8: { title: 'Contrôle surprise en classe', subtitle: 'Monsieur Julien lance un contrôle de 30 minutes avec restrictions. Les badges de complétion suivent la progression.' },
+    sc9: { title: 'Mettre en valeur un travail d\'élève', subtitle: 'Monsieur Julien projette le devoir de Chloé et l\'annote en direct pour montrer les points forts à toute la classe.' },
+    sc10: { title: 'Une séance complète de A à Z', subtitle: 'Monsieur Julien gère une séance entière : QR code, distribution, supervision, sondage, puis clôture avec sauvegarde automatique.' },
   };
 
   // --- Header elements ---
@@ -4401,33 +4612,31 @@
     const info = protoTitles[id];
     if (!info) return;
 
-    // Update old header (kept as fallback)
-    if (titleEl) titleEl.textContent = info.title;
-    if (subtitleEl) subtitleEl.textContent = info.subtitle;
-    if (infoBadge) infoBadge.textContent = id.toUpperCase();
-
-    // Show narration card with title + controls for ALL prototypes
     if (ncCard) {
       ncLabel.textContent = id.toUpperCase();
       ncTitle.textContent = info.title;
       if (ncSubtitle) ncSubtitle.textContent = info.subtitle || '';
-      // Hide description area and steps for non-scenario prototypes
+
+      // Populate expanded body for non-scenario prototypes
       if (!id.startsWith('sc')) {
-        ncBody.classList.add('hidden');
+        populateProtoBody(id, info);
         ncSteps.innerHTML = '';
-        ncToggleDesc.classList.add('hidden');
         ncPrev.classList.add('hidden');
         ncNext.classList.add('hidden');
       } else {
-        ncToggleDesc.classList.remove('hidden');
         ncPrev.classList.remove('hidden');
         ncNext.classList.remove('hidden');
       }
+
+      // Reset expand state
+      ncDescOpen = false;
+      if (ncBody) ncBody.classList.add('hidden');
+      ncCard.classList.remove('expanded');
+
       ncCard.classList.remove('hidden');
       gsap.fromTo(ncCard, { opacity: 0, y: -6 }, { opacity: 1, y: 0, duration: 0.3, ease: smooth });
     }
 
-    // Hide old header since card replaces it
     if (infoHeader) infoHeader.style.display = 'none';
   }
 
