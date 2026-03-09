@@ -669,6 +669,8 @@ body {
   flex-shrink: 0;
   overflow: hidden;
   transition: all .3s cubic-bezier(.4,0,.2,1);
+  position: relative;
+  z-index: 10;
 }
 .proto-narration-card.hidden { display: none; }
 
@@ -683,9 +685,15 @@ body {
 
 .proto-nc-title-area {
   display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+.proto-nc-title-row {
+  display: flex;
   align-items: center;
   gap: 8px;
-  min-width: 0;
 }
 .proto-nc-label {
   font-size: 10px;
@@ -703,6 +711,17 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.proto-nc-subtitle {
+  font-size: 11px;
+  line-height: 1.4;
+  color: #64748b;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.proto-nc-subtitle:empty { display: none; }
 
 .proto-nc-controls {
   display: flex;

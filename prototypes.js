@@ -3053,6 +3053,7 @@
   const ncCard = document.getElementById('proto-narration-card');
   const ncLabel = document.getElementById('proto-nc-label');
   const ncTitle = document.getElementById('proto-nc-title');
+  const ncSubtitle = document.getElementById('proto-nc-subtitle');
   const ncSteps = document.getElementById('proto-nc-steps');
   const ncBody = document.getElementById('proto-nc-body');
   const ncSituation = document.getElementById('proto-nc-situation');
@@ -3198,7 +3199,8 @@
   }
 
   if (ncPlayPause) {
-    ncPlayPause.addEventListener('click', () => {
+    ncPlayPause.addEventListener('click', (e) => {
+      e.stopPropagation();
       if (!currentTL) return;
       isPaused = !isPaused;
       if (isPaused) currentTL.pause();
@@ -3209,29 +3211,32 @@
 
   // Restart
   if (ncRestart) {
-    ncRestart.addEventListener('click', () => {
-      if (!currentTL) return;
-      currentTL.restart();
-      isPaused = false;
-      updatePlayPauseUI();
+    ncRestart.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (currentProto) {
+        navigateTo(currentProto);
+      }
     });
   }
 
   // Prev / Next
   if (ncPrev) {
-    ncPrev.addEventListener('click', () => {
+    ncPrev.addEventListener('click', (e) => {
+      e.stopPropagation();
       if (currentStepIdx > 0) goToStep(currentStepIdx - 1);
     });
   }
   if (ncNext) {
-    ncNext.addEventListener('click', () => {
+    ncNext.addEventListener('click', (e) => {
+      e.stopPropagation();
       if (currentStepIdx < scenarioSteps.length - 1) goToStep(currentStepIdx + 1);
     });
   }
 
   // Toggle description
   if (ncToggleDesc) {
-    ncToggleDesc.addEventListener('click', () => {
+    ncToggleDesc.addEventListener('click', (e) => {
+      e.stopPropagation();
       ncDescOpen = !ncDescOpen;
       ncBody.classList.toggle('hidden', !ncDescOpen);
       ncToggleDesc.classList.toggle('open', ncDescOpen);
@@ -3240,13 +3245,14 @@
 
   // Fullscreen
   if (ncFullscreen) {
-    ncFullscreen.addEventListener('click', () => {
-      const viewport = document.getElementById('proto-viewport');
-      if (!viewport) return;
+    ncFullscreen.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const stageContent = document.getElementById('proto-stage-content');
+      if (!stageContent) return;
       if (document.fullscreenElement) {
         document.exitFullscreen();
       } else {
-        viewport.requestFullscreen().catch(() => {});
+        stageContent.requestFullscreen().catch(() => {});
       }
     });
   }
@@ -4404,6 +4410,7 @@
     if (ncCard) {
       ncLabel.textContent = id.toUpperCase();
       ncTitle.textContent = info.title;
+      if (ncSubtitle) ncSubtitle.textContent = info.subtitle || '';
       // Hide description area and steps for non-scenario prototypes
       if (!id.startsWith('sc')) {
         ncBody.classList.add('hidden');
@@ -4465,17 +4472,6 @@
 
   // TOC click handlers
   tocItems.forEach(item => {
-    // Handle scroll links (Vitrines section)
-    if (item.dataset.scroll) {
-      item.addEventListener('click', () => {
-        const target = document.getElementById(item.dataset.scroll);
-        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        tocItems.forEach(i => i.classList.remove('active'));
-        item.classList.add('active');
-      });
-      return;
-    }
-    // Handle prototype links
     item.addEventListener('click', () => navigateTo(item.dataset.proto));
   });
 
