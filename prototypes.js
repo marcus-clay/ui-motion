@@ -4468,6 +4468,26 @@
     document.body.classList.add('embed-mode');
   }
 
+  // Speed control (e.g. ?speed=0.8)
+  const speed = parseFloat(params.get('speed')) || 1;
+  if (speed !== 1) {
+    gsap.globalTimeline.timeScale(speed);
+  }
+
+  // Pause/play via postMessage from parent (for hover-to-play)
+  const autoplay = params.get('autoplay') !== '0';
+  if (isEmbed && !autoplay) {
+    gsap.globalTimeline.pause();
+  }
+  window.addEventListener('message', (e) => {
+    if (e.data === 'play') gsap.globalTimeline.resume();
+    if (e.data === 'pause') gsap.globalTimeline.pause();
+    if (e.data === 'restart') {
+      gsap.globalTimeline.restart();
+      gsap.globalTimeline.resume();
+    }
+  });
+
   // Read hash on load (e.g. #t3, #sc1)
   function getHashProto() {
     const hash = window.location.hash.replace('#', '').toLowerCase();
